@@ -1,0 +1,269 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id    String  @id @default(cuid())
+  email String  @unique
+  name  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  image       UserImage?
+  password    Password?
+  sessions    Session[]
+  connections Connection[]
+  roles       RolesOnUsers[]
+
+  @@map("users")
+}
+
+model RolesOnUsers {
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@id([userId, roleId])
+}
+
+model PermissionsOnRoles {
+  permissionId String
+  roleId       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  permission Permission @relation(fields: [permissionId], references: [id])
+  role       Role       @relation(fields: [roleId], references: [id])
+
+  @@id([permissionId, roleId])
+}
+
+model UserImage {
+  id          String  @id @default(cuid())
+  altText     String?
+  contentType String
+  blob        Bytes
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String @unique
+}
+
+model Password {
+  hash String
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String @unique
+}
+
+model Session {
+  id             String   @id @default(cuid())
+  expirationDate DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String
+
+  // non-unique foreign key
+  @@index([userId])
+}
+
+model Role {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users       RolesOnUsers[]
+  permissions PermissionsOnRoles[]
+}
+
+model Permission {
+  id          String @id @default(cuid())
+  action      String // e.g. create, read, update, delete
+  entity      String // e.g. note, user, etc.
+  access      String // e.g. own or any
+  description String @default("")
+
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  permissions PermissionsOnRoles[]
+
+  @@unique([action, entity, access])
+}
+
+model Verification {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  /// The type of verification, e.g. "email" or "phone"
+  type String
+
+  /// The thing we're trying to verify, e.g. a user's email or phone number
+  target String
+
+  /// The secret key used to generate the otp
+  secret String
+
+  /// The algorithm used to generate the otp
+  algorithm String
+
+  /// The number of digits in the otp
+  digits Int
+
+  /// The number of seconds the otp is valid for
+  period Int
+
+  /// The valid characters for the otp
+  charSet String
+
+  /// When it's safe to delete this verification
+  expiresAt DateTime?
+
+  @@unique([target, type])
+}
+
+model Connection {
+  id           String @id @default(cuid())
+  providerName String
+  providerId   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String
+
+  @@unique([providerName, providerId])
+}
+
+model Banca {
+  id        String   @id @default(cuid())
+  name      String
+  status    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  quizzes   Quiz[]
+
+  @@map("bancas")
+}
+
+model Cargo {
+  id        String   @id @default(cuid())
+  name      String
+  status    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  quizzes   Quiz[]
+
+  @@map("cargos")
+}
+
+model Materia {
+  id        String   @id @default(cuid())
+  name      String
+  color     String?
+  status    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Lei       Lei[]
+
+  @@map("materias")
+}
+
+model Lei {
+  id        String   @id @default(cuid())
+  name      String
+  materiaId String
+  materia   Materia  @relation(fields: [materiaId], references: [id])
+  status    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  titulos   Titulo[]
+
+  @@map("leis")
+}
+
+model Titulo {
+  id        String     @id @default(cuid())
+  name      String
+  status    Boolean    @default(true)
+  leiId     String
+  lei       Lei        @relation(fields: [leiId], references: [id])
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  capitulos Capitulo[]
+
+  @@index([leiId])
+  @@map("titulos")
+}
+
+model Capitulo {
+  id        String   @id @default(cuid())
+  name      String
+  status    Boolean  @default(true)
+  tituloId  String
+  titulo    Titulo   @relation(fields: [tituloId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  artigos   Artigo[]
+
+  @@index([tituloId])
+  @@map("capitulos")
+}
+
+model Artigo {
+  id         String   @id @default(cuid())
+  name       String
+  status     Boolean  @default(true)
+  capituloId String
+  capitulo   Capitulo @relation(fields: [capituloId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  quizzes    Quiz[]
+
+  @@index([capituloId])
+  @@map("artigos")
+}
+
+model Quiz {
+  id         String   @id @default(cuid())
+  status     Boolean  @default(true)
+  enunciado  String
+  comentario String
+  fundamento String?
+  tags       String?
+  verdadeiro Boolean
+  ano        Int?
+  artigoId   String
+  bancaId    String?
+  cargoId    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  artigo     Artigo   @relation(fields: [artigoId], references: [id])
+  banca      Banca?   @relation(fields: [bancaId], references: [id])
+  cargo      Cargo?   @relation(fields: [cargoId], references: [id])
+
+  @@index([artigoId])
+  @@index([bancaId, cargoId])
+  @@map("quizzes")
+}
