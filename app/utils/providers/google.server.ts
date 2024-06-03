@@ -1,9 +1,9 @@
-import { GoogleStrategy } from 'remix-auth-google'
 import { createId as cuid } from '@paralleldrive/cuid2'
-import { Timings } from '../timing.server'
-import { AuthProvider } from './provider'
-import { connectionSessionStorage } from '../connections.server'
 import { redirect } from '@remix-run/react'
+import { GoogleStrategy } from 'remix-auth-google'
+import { connectionSessionStorage } from '../connections.server'
+import { type Timings } from '../timing.server'
+import { type AuthProvider } from './provider'
 
 const shouldMock = process.env.GOOGLE_CLIENT_ID?.startsWith('MOCK_')
 
@@ -47,6 +47,7 @@ export class GoogleProvider implements AuthProvider {
 			},
 		})
 	}
+
 	resolveConnectionData(
 		providerId: string,
 		{ timings }: { timings?: Timings } = {},

@@ -23,10 +23,10 @@ export default function () {
 		{ name: 'Bancas', href: '/admin/bancas' },
 		{ name: 'Cargos', href: '/admin/cargos' },
 		{ name: 'Quizzes', href: '/admin/quizzes' },
-		{ name: 'Combos', href: '/admin/combos' },
 		{ name: 'Flashcards', href: '/admin/flashcards' },
-		{ name: 'Importações', href: '/admin/importacoes' },
-		{ name: 'Modo Usuário', href: '/inicio' },
+		{ name: 'Combos', href: '/admin/combos' },
+		{ name: 'Importações', href: '/admin/import' },
+		{ name: 'Modo Usuário', href: '/home' },
 	]
 	return (
 		<>

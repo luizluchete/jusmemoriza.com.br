@@ -27,7 +27,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	// this loader performs mutations, so we need to make sure we're on the
 	// primary instance to avoid writing to a read-only replica
 	await ensurePrimary()
-	console.log({ params })
 	const providerName = ProviderNameSchema.parse(params.provider)
 	const redirectTo = getRedirectCookieValue(request)
 	const label = providerLabels[providerName]
@@ -166,7 +165,7 @@ async function makeSession(
 	}: { request: Request; userId: string; redirectTo?: string | null },
 	responseInit?: ResponseInit,
 ) {
-	redirectTo ??= '/'
+	redirectTo ??= '/home'
 	const session = await prisma.session.create({
 		select: { id: true, expirationDate: true, userId: true },
 		data: {

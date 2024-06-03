@@ -1,7 +1,7 @@
+import { type LoaderFunctionArgs } from '@remix-run/node'
 import { json } from '@remix-run/react'
+import { requireUserWithRole } from '#app/utils/permissions.server'
 import { MateriaEditor } from './__materia-editor'
-import { requireUserWithRole } from '#app/utils/permissions.server.js'
-import { LoaderFunctionArgs } from '@remix-run/node'
 
 export { action } from './__materia-editor.server'
 

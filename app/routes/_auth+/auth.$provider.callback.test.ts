@@ -5,7 +5,7 @@ import { afterEach, expect, test } from 'vitest'
 import { twoFAVerificationType } from '#app/routes/settings+/profile.two-factor.tsx'
 import { getSessionExpirationDate, sessionKey } from '#app/utils/auth.server.ts'
 import { connectionSessionStorage } from '#app/utils/connections.server.ts'
-import { GITHUB_PROVIDER_NAME } from '#app/utils/connections.tsx'
+import { GOOGLE_PROVIDER_NAME } from '#app/utils/connections.tsx'
 import { prisma } from '#app/utils/db.server.ts'
 import { authSessionStorage } from '#app/utils/session.server.ts'
 import { generateTOTP } from '#app/utils/totp.server.ts'
@@ -87,7 +87,7 @@ test(`when a user is logged in and has already connected, it doesn't do anything
 	const githubUser = await insertGitHubUser()
 	await prisma.connection.create({
 		data: {
-			providerName: GITHUB_PROVIDER_NAME,
+			providerName: GOOGLE_PROVIDER_NAME,
 			userId: session.userId,
 			providerId: githubUser.profile.id.toString(),
 		},
@@ -144,7 +144,7 @@ test('gives an error if the account is already connected to another user', async
 			...createUser(),
 			connections: {
 				create: {
-					providerName: GITHUB_PROVIDER_NAME,
+					providerName: GOOGLE_PROVIDER_NAME,
 					providerId: githubUser.profile.id.toString(),
 				},
 			},
@@ -172,7 +172,7 @@ test('if a user is not logged in, but the connection exists, make a session', as
 	const { userId } = await setupUser()
 	await prisma.connection.create({
 		data: {
-			providerName: GITHUB_PROVIDER_NAME,
+			providerName: GOOGLE_PROVIDER_NAME,
 			providerId: githubUser.profile.id.toString(),
 			userId,
 		},
@@ -188,7 +188,7 @@ test('if a user is not logged in, but the connection exists and they have enable
 	const { userId } = await setupUser()
 	await prisma.connection.create({
 		data: {
-			providerName: GITHUB_PROVIDER_NAME,
+			providerName: GOOGLE_PROVIDER_NAME,
 			providerId: githubUser.profile.id.toString(),
 			userId,
 		},

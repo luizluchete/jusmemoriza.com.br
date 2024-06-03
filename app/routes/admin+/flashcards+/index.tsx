@@ -59,7 +59,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		artigosPromise,
 	])
 
-	const whereQuiz: Prisma.QuizWhereInput = {
+	const whereFlashcard: Prisma.FlashcardWhereInput = {
 		artigoId,
 		artigo: {
 			capituloId,
@@ -67,17 +67,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		},
 		OR: search
 			? [
-					{ enunciado: { contains: search, mode: 'insensitive' } },
-					{ comentario: { contains: search, mode: 'insensitive' } },
+					{ frente: { contains: search, mode: 'insensitive' } },
+					{ verso: { contains: search, mode: 'insensitive' } },
 					{ fundamento: { contains: search, mode: 'insensitive' } },
 				]
 			: undefined,
 	}
 
-	const quizzesPromise = prisma.quiz.findMany({
+	const flashcardsPromise = prisma.flashcard.findMany({
 		include: {
-			banca: true,
-			cargo: true,
 			artigo: {
 				include: {
 					capitulo: {
@@ -88,15 +86,26 @@ export async function loader({ request }: LoaderFunctionArgs) {
 				},
 			},
 		},
-		where: whereQuiz,
+		where: whereFlashcard,
 		orderBy: { createdAt: 'desc' },
 		take: ITEMS_PER_PAGE,
 		skip: (page - 1) * ITEMS_PER_PAGE,
 	})
-	const countPromise = prisma.quiz.count({ where: whereQuiz })
+	const countPromise = prisma.flashcard.count({ where: whereFlashcard })
 
-	const [quizzes, count] = await Promise.all([quizzesPromise, countPromise])
-	return json({ materias, leis, titulos, capitulos, artigos, quizzes, count })
+	const [flashcards, count] = await Promise.all([
+		flashcardsPromise,
+		countPromise,
+	])
+	return json({
+		materias,
+		leis,
+		titulos,
+		capitulos,
+		artigos,
+		flashcards,
+		count,
+	})
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -105,10 +114,10 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	if (values._action === 'delete') {
 		const id = values.id + ''
-		await prisma.quiz.delete({ where: { id } })
+		await prisma.flashcard.delete({ where: { id } })
 		const toastHeaders = await createToastHeaders({
 			title: 'Deletado',
-			description: 'Quiz deletado com sucesso !',
+			description: 'Flashcard deletado com sucesso !',
 		})
 		return json({ status: 'success' } as const, { headers: toastHeaders })
 	}
@@ -116,7 +125,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function Index() {
-	const { materias, leis, titulos, capitulos, artigos, quizzes, count } =
+	const { materias, leis, titulos, capitulos, artigos, flashcards, count } =
 		useLoaderData<typeof loader>()
 
 	const [searchParams] = useSearchParams()
@@ -128,7 +137,7 @@ export default function Index() {
 				<div className="sm:flex sm:items-center">
 					<div className="sm:flex-auto">
 						<h1 className="text-base font-semibold leading-6 text-gray-900">
-							Quizzes
+							Flashcards
 						</h1>
 						<p className="mt-2 text-sm text-gray-700">
 							Total de registros encontrados {count}
@@ -236,7 +245,7 @@ export default function Index() {
 											scope="col"
 											className="w-10/12 py-1 text-left text-sm font-semibold text-gray-900 "
 										>
-											Enunciado / Comentário / Fundamento
+											Frente / Verso / Fundamento
 										</th>
 										<th
 											scope="col"
@@ -250,49 +259,56 @@ export default function Index() {
 									</tr>
 								</thead>
 								<tbody className="divide-y-8 divide-gray-200 bg-white">
-									{quizzes.map(quiz => (
-										<tr key={quiz.id} className="w-full">
+									{flashcards.map(flashcard => (
+										<tr key={flashcard.id} className="w-full">
 											<td className="flex w-10/12 flex-col  divide-y whitespace-normal py-1  text-sm font-medium text-gray-900">
 												<div
-													dangerouslySetInnerHTML={{ __html: quiz.enunciado }}
-												/>
-												<div
-													dangerouslySetInnerHTML={{ __html: quiz.comentario }}
+													dangerouslySetInnerHTML={{
+														__html: flashcard.frente,
+													}}
 												/>
 												<div
 													dangerouslySetInnerHTML={{
-														__html: quiz.fundamento || '',
+														__html: flashcard.verso,
+													}}
+												/>
+												<div
+													dangerouslySetInnerHTML={{
+														__html: flashcard.fundamento || '',
 													}}
 												/>
 											</td>
 											<td className="w-3/12 whitespace-normal py-1 text-sm text-gray-500">
 												<div className="flex flex-col divide-y">
 													<span className="font-bold">
-														{quiz.artigo.capitulo.titulo.lei.materia.name.toUpperCase()}
+														{flashcard.artigo.capitulo.titulo.lei.materia.name.toUpperCase()}
 													</span>
 													<span className="font-semibold">
-														{quiz.artigo.capitulo.titulo.lei.name.toUpperCase()}
+														{flashcard.artigo.capitulo.titulo.lei.name.toUpperCase()}
 													</span>
-													<span>{quiz.artigo.capitulo.titulo.name}</span>
-													<span>{quiz.artigo.capitulo.name.toUpperCase()}</span>
-													<span>{quiz.artigo.name.toUpperCase()}</span>
+													<span>{flashcard.artigo.capitulo.titulo.name}</span>
+													<span>
+														{flashcard.artigo.capitulo.name.toUpperCase()}
+													</span>
+													<span>{flashcard.artigo.name.toUpperCase()}</span>
 												</div>
 											</td>
 											<td className="whitespace-nowrap px-3 py-1 text-sm ">
 												<div className="flex justify-around gap-x-3">
 													<Link
-														to={`${quiz.id}/edit`}
+														to={`${flashcard.id}/edit`}
 														preventScrollReset
 														className="text-indigo-600 hover:text-indigo-900"
 													>
-														Editar<span className="sr-only">, {quiz.id}</span>
+														Editar
+														<span className="sr-only">, {flashcard.id}</span>
 													</Link>
 													<fetcher.Form method="post" className="h-full">
 														<input
 															type="text"
 															hidden
 															name="id"
-															defaultValue={quiz.id}
+															defaultValue={flashcard.id}
 														/>
 														<button
 															type="submit"

@@ -12,8 +12,6 @@ export async function loader() {
 export async function action({ request, params }: ActionFunctionArgs) {
 	const providerName = ProviderNameSchema.parse(params.provider)
 
-	console.log({ providerName })
-
 	try {
 		await handleMockAction(providerName, request)
 		return await authenticator.authenticate(providerName, request)

@@ -7,20 +7,14 @@ import {
 	type ActionFunctionArgs,
 	type MetaFunction,
 } from '@remix-run/node'
-import {
-	Form,
-	useActionData,
-	useLoaderData,
-	useSearchParams,
-} from '@remix-run/react'
+import { Form, useActionData, useSearchParams } from '@remix-run/react'
 import { HoneypotInputs } from 'remix-utils/honeypot/react'
 import { safeRedirect } from 'remix-utils/safe-redirect'
 import { z } from 'zod'
 import { CheckboxField, ErrorList, Field } from '#app/components/forms.tsx'
 import { Spacer } from '#app/components/spacer.tsx'
 import { StatusButton } from '#app/components/ui/status-button.tsx'
-import { requireAnonymous, sessionKey, signup } from '#app/utils/auth.server.ts'
-import { prisma } from '#app/utils/db.server.ts'
+import { requireAnonymous, sessionKey, signup } from '#app/utils/auth.server'
 import { checkHoneypot } from '#app/utils/honeypot.server.ts'
 import { useIsPending } from '#app/utils/misc.tsx'
 import { authSessionStorage } from '#app/utils/session.server.ts'
@@ -115,7 +109,6 @@ export const meta: MetaFunction = () => {
 }
 
 export default function SignupRoute() {
-	const data = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
 	const isPending = useIsPending()
 	const [searchParams] = useSearchParams()

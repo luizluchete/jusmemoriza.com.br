@@ -18,11 +18,13 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  image       UserImage?
-  password    Password?
-  sessions    Session[]
-  connections Connection[]
-  roles       RolesOnUsers[]
+  image            UserImage?
+  password         Password?
+  sessions         Session[]
+  connections      Connection[]
+  roles            RolesOnUsers[]
+  quizzesResults   QuizUserResults[]
+  quizzesFavorites QuizUserFavorites[]
 
   @@map("users")
 }
@@ -191,14 +193,15 @@ model Materia {
 }
 
 model Lei {
-  id        String   @id @default(cuid())
-  name      String
-  materiaId String
-  materia   Materia  @relation(fields: [materiaId], references: [id])
-  status    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  titulos   Titulo[]
+  id         String         @id @default(cuid())
+  name       String
+  materiaId  String
+  materia    Materia        @relation(fields: [materiaId], references: [id])
+  status     Boolean        @default(true)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  titulos    Titulo[]
+  combosLeis LeisOnCombos[]
 
   @@map("leis")
 }
@@ -232,38 +235,107 @@ model Capitulo {
 }
 
 model Artigo {
-  id         String   @id @default(cuid())
+  id         String      @id @default(cuid())
   name       String
-  status     Boolean  @default(true)
+  status     Boolean     @default(true)
   capituloId String
-  capitulo   Capitulo @relation(fields: [capituloId], references: [id])
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  capitulo   Capitulo    @relation(fields: [capituloId], references: [id])
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
   quizzes    Quiz[]
+  flashcards Flashcard[]
 
   @@index([capituloId])
   @@map("artigos")
 }
 
 model Quiz {
-  id         String   @id @default(cuid())
-  status     Boolean  @default(true)
-  enunciado  String
-  comentario String
-  fundamento String?
-  tags       String?
-  verdadeiro Boolean
-  ano        Int?
-  artigoId   String
-  bancaId    String?
-  cargoId    String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  artigo     Artigo   @relation(fields: [artigoId], references: [id])
-  banca      Banca?   @relation(fields: [bancaId], references: [id])
-  cargo      Cargo?   @relation(fields: [cargoId], references: [id])
+  id            String              @id @default(cuid())
+  status        Boolean             @default(true)
+  enunciado     String
+  comentario    String
+  fundamento    String?
+  tags          String?
+  verdadeiro    Boolean
+  ano           Int?
+  artigoId      String
+  bancaId       String?
+  cargoId       String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  artigo        Artigo              @relation(fields: [artigoId], references: [id])
+  banca         Banca?              @relation(fields: [bancaId], references: [id])
+  cargo         Cargo?              @relation(fields: [cargoId], references: [id])
+  userResults   QuizUserResults[]
+  userFavorites QuizUserFavorites[]
 
   @@index([artigoId])
   @@index([bancaId, cargoId])
   @@map("quizzes")
+}
+
+model QuizUserResults {
+  id        String   @id @default(cuid())
+  result    Boolean
+  quizId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  quiz Quiz @relation(fields: [quizId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("quiz_user_results")
+}
+
+model QuizUserFavorites {
+  quizId String
+  userId String
+
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  quiz      Quiz     @relation(fields: [quizId], references: [id])
+
+  @@id([quizId, userId])
+  @@index([userId])
+}
+
+model Flashcard {
+  id          String   @id @default(cuid())
+  status      Boolean  @default(true)
+  titulo      String?
+  frente      String
+  verso       String
+  fundamento  String?
+  artigoId    String
+  artigo      Artigo   @relation(fields: [artigoId], references: [id])
+  dificuldade String?
+  tipo        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Combo {
+  id         String         @id @default(cuid())
+  name       String
+  status     Boolean        @default(true)
+  urlHotmart String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  leisCombos LeisOnCombos[]
+
+  @@map("combos")
+}
+
+model LeisOnCombos {
+  comboId   String
+  leiId     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  combo Combo @relation(fields: [comboId], references: [id])
+  lei   Lei   @relation(fields: [leiId], references: [id])
+
+  @@id([comboId, leiId])
+  @@index([comboId])
 }

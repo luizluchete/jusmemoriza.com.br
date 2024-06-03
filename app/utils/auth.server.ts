@@ -120,7 +120,6 @@ export async function signup({
 	password: string
 }) {
 	const hashedPassword = await getPasswordHash(password)
-	const userRole = await prisma.role.findUnique({ where: { name: 'user' } })
 	const session = await prisma.session.create({
 		data: {
 			expirationDate: getSessionExpirationDate(),

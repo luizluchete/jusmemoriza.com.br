@@ -37,7 +37,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		select: {
 			id: true,
 			name: true,
-			username: true,
 			email: true,
 			image: {
 				select: { id: true },
@@ -109,7 +108,7 @@ export default function EditUserProfile() {
 				<div className="relative h-52 w-52">
 					<img
 						src={getUserImgSrc(data.user.image?.id)}
-						alt={data.user.username}
+						alt={data.user.email}
 						className="h-full w-full rounded-full object-cover"
 					/>
 					<Button
@@ -181,7 +180,7 @@ async function profileUpdateAction({ userId, formData }: ProfileActionArgs) {
 		async: true,
 		schema: ProfileFormSchema.superRefine(async ({ username }, ctx) => {
 			const existingUsername = await prisma.user.findUnique({
-				where: { username },
+				where: { id: userId },
 				select: { id: true },
 			})
 			if (existingUsername && existingUsername.id !== userId) {
@@ -203,11 +202,10 @@ async function profileUpdateAction({ userId, formData }: ProfileActionArgs) {
 	const data = submission.value
 
 	await prisma.user.update({
-		select: { username: true },
+		select: { name: true },
 		where: { id: userId },
 		data: {
 			name: data.name,
-			username: data.username,
 		},
 	})
 
@@ -229,7 +227,7 @@ function UpdateProfile() {
 			return parseWithZod(formData, { schema: ProfileFormSchema })
 		},
 		defaultValue: {
-			username: data.user.username,
+			username: data.user.name,
 			name: data.user.name,
 		},
 	})
