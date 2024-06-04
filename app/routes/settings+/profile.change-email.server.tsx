@@ -43,7 +43,7 @@ export async function handleVerification({
 	})
 	const user = await prisma.user.update({
 		where: { id: submission.value.target },
-		select: { id: true, email: true, username: true },
+		select: { id: true, email: true },
 		data: { email: newEmail },
 	})
 

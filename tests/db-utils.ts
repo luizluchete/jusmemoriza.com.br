@@ -2,32 +2,14 @@ import fs from 'node:fs'
 import { faker } from '@faker-js/faker'
 import { type PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
-import { UniqueEnforcer } from 'enforce-unique'
-
-const uniqueUsernameEnforcer = new UniqueEnforcer()
 
 export function createUser() {
 	const firstName = faker.person.firstName()
 	const lastName = faker.person.lastName()
 
-	const username = uniqueUsernameEnforcer
-		.enforce(() => {
-			return (
-				faker.string.alphanumeric({ length: 2 }) +
-				'_' +
-				faker.internet.userName({
-					firstName: firstName.toLowerCase(),
-					lastName: lastName.toLowerCase(),
-				})
-			)
-		})
-		.slice(0, 20)
-		.toLowerCase()
-		.replace(/[^a-z0-9_]/g, '_')
 	return {
-		username,
 		name: `${firstName} ${lastName}`,
-		email: `${username}@example.com`,
+		email: `${firstName}.${lastName}@example.com`.toLowerCase(),
 	}
 }
 
@@ -116,17 +98,20 @@ export async function img({
 }
 
 export async function cleanupDb(prisma: PrismaClient) {
-	const tables = await prisma.$queryRaw<
-		{ name: string }[]
-	>`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_prisma_migrations';`
+	const tables = await prisma.$queryRaw<{ name: string }[]>`
+	SELECT table_name name
+	FROM information_schema.tables
+	WHERE table_schema = 'public'
+	AND table_type = 'BASE TABLE'
+	AND table_name NOT LIKE '_prisma_migrations'`
 
 	await prisma.$transaction([
 		// Disable FK constraints to avoid relation conflicts during deletion
-		prisma.$executeRawUnsafe(`PRAGMA foreign_keys = OFF`),
+		prisma.$executeRawUnsafe(`SET session_replication_role = replica`),
 		// Delete all rows from each table, preserving table structures
 		...tables.map(({ name }) =>
 			prisma.$executeRawUnsafe(`DELETE from "${name}"`),
 		),
-		prisma.$executeRawUnsafe(`PRAGMA foreign_keys = ON`),
+		prisma.$executeRawUnsafe(`RESET session_replication_role`),
 	])
 }

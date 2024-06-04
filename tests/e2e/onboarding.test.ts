@@ -5,7 +5,7 @@ import { readEmail } from '#tests/mocks/utils.ts'
 import { createUser, expect, test as base } from '#tests/playwright-utils.ts'
 
 const URL_REGEX = /(?<url>https?:\/\/[^\s$.?#].[^\s]*)/
-const CODE_REGEX = /Here's your verification code: (?<code>[\d\w]+)/
+const CODE_REGEX = /Aqui está seu código de verificação: (?<code>[\d\w]+)/
 function extractUrl(text: string) {
 	const match = text.match(URL_REGEX)
 	return match?.groups?.url
@@ -13,7 +13,6 @@ function extractUrl(text: string) {
 
 const test = base.extend<{
 	getOnboardingData(): {
-		username: string
 		name: string
 		email: string
 		password: string
@@ -28,7 +27,10 @@ const test = base.extend<{
 			}
 			return onboardingData
 		})
-		await prisma.user.deleteMany({ where: { username: userData.username } })
+		await prisma.rolesOnUsers.deleteMany({
+			where: { user: { email: userData.email } },
+		})
+		await prisma.user.deleteMany({ where: { email: userData.email } })
 	},
 })
 
@@ -37,11 +39,11 @@ test('onboarding with link', async ({ page, getOnboardingData }) => {
 
 	await page.goto('/')
 
-	await page.getByRole('link', { name: /log in/i }).click()
+	await page.getByRole('link', { name: /Entrar/i }).click()
 	await expect(page).toHaveURL(`/login`)
 
 	const createAccountLink = page.getByRole('link', {
-		name: /create an account/i,
+		name: /Crie sua conta/i,
 	})
 	await createAccountLink.click()
 
@@ -51,17 +53,17 @@ test('onboarding with link', async ({ page, getOnboardingData }) => {
 	await emailTextbox.click()
 	await emailTextbox.fill(onboardingData.email)
 
-	await page.getByRole('button', { name: /submit/i }).click()
+	await page.getByRole('button', { name: /Enviar/i }).click()
 	await expect(
-		page.getByRole('button', { name: /submit/i, disabled: true }),
+		page.getByRole('button', { name: /Enviar/i, disabled: true }),
 	).toBeVisible()
-	await expect(page.getByText(/check your email/i)).toBeVisible()
+	await expect(page.getByText(/Verifique seu e-mail/i)).toBeVisible()
 
 	const email = await readEmail(onboardingData.email)
 	invariant(email, 'Email not found')
 	expect(email.to).toBe(onboardingData.email.toLowerCase())
-	expect(email.from).toBe('hello@epicstack.dev')
-	expect(email.subject).toMatch(/welcome/i)
+	expect(email.from).toBe('suporte@oabnamedida.com.br')
+	expect(email.subject).toMatch(/Bem vindo/i)
 	const onboardingUrl = extractUrl(email.text)
 	invariant(onboardingUrl, 'Onboarding URL not found')
 	await page.goto(onboardingUrl)
@@ -70,35 +72,30 @@ test('onboarding with link', async ({ page, getOnboardingData }) => {
 
 	await page
 		.getByRole('main')
-		.getByRole('button', { name: /submit/i })
+		.getByRole('button', { name: /Validar/i })
 		.click()
 
 	await expect(page).toHaveURL(`/onboarding`)
+
+	await page.getByRole('textbox', { name: /^Nome/i }).fill(onboardingData.name)
+
+	await page.getByLabel(/^Senha/i).fill(onboardingData.password)
+
+	await page.getByLabel(/^Confirme sua senha/i).fill(onboardingData.password)
+
 	await page
-		.getByRole('textbox', { name: /^username/i })
-		.fill(onboardingData.username)
+		.getByLabel(
+			/Você concorda com nossos Termos de Serviço e Política de Privacidade?/i,
+		)
+		.check()
 
-	await page.getByRole('textbox', { name: /^name/i }).fill(onboardingData.name)
+	await page.getByLabel(/Continuar conectado ?/i).check()
 
-	await page.getByLabel(/^password/i).fill(onboardingData.password)
+	await page.getByRole('button', { name: /Crie sua conta/i }).click()
 
-	await page.getByLabel(/^confirm password/i).fill(onboardingData.password)
+	await expect(page).toHaveURL(`/home`)
 
-	await page.getByLabel(/terms/i).check()
-
-	await page.getByLabel(/remember me/i).check()
-
-	await page.getByRole('button', { name: /Create an account/i }).click()
-
-	await expect(page).toHaveURL(`/`)
-
-	await page.getByRole('link', { name: onboardingData.name }).click()
-	await page.getByRole('menuitem', { name: /profile/i }).click()
-
-	await expect(page).toHaveURL(`/users/${onboardingData.username}`)
-
-	await page.getByRole('link', { name: onboardingData.name }).click()
-	await page.getByRole('menuitem', { name: /logout/i }).click()
+	await page.getByRole('button', { name: /Sair/i }).click()
 	await expect(page).toHaveURL(`/`)
 })
 
@@ -107,26 +104,26 @@ test('onboarding with a short code', async ({ page, getOnboardingData }) => {
 
 	await page.goto('/signup')
 
-	const emailTextbox = page.getByRole('textbox', { name: /email/i })
+	const emailTextbox = page.getByRole('textbox', { name: /Email/i })
 	await emailTextbox.click()
 	await emailTextbox.fill(onboardingData.email)
 
-	await page.getByRole('button', { name: /submit/i }).click()
+	await page.getByRole('button', { name: /Enviar/i }).click()
 	await expect(
-		page.getByRole('button', { name: /submit/i, disabled: true }),
+		page.getByRole('button', { name: /Enviar/i, disabled: true }),
 	).toBeVisible()
-	await expect(page.getByText(/check your email/i)).toBeVisible()
+	await expect(page.getByText(/Verifique seu e-mail/i)).toBeVisible()
 
 	const email = await readEmail(onboardingData.email)
 	invariant(email, 'Email not found')
 	expect(email.to).toBe(onboardingData.email.toLowerCase())
-	expect(email.from).toBe('hello@epicstack.dev')
-	expect(email.subject).toMatch(/welcome/i)
+	expect(email.from).toBe('suporte@oabnamedida.com.br')
+	expect(email.subject).toMatch(/Bem vindo/i)
 	const codeMatch = email.text.match(CODE_REGEX)
 	const code = codeMatch?.groups?.code
 	invariant(code, 'Onboarding code not found')
-	await page.getByRole('textbox', { name: /code/i }).fill(code)
-	await page.getByRole('button', { name: /submit/i }).click()
+	await page.getByRole('textbox', { name: /Código de verificação/i }).fill(code)
+	await page.getByRole('button', { name: /Validar/i }).click()
 
 	await expect(page).toHaveURL(`/onboarding`)
 })
@@ -134,14 +131,12 @@ test('onboarding with a short code', async ({ page, getOnboardingData }) => {
 test('login as existing user', async ({ page, insertNewUser }) => {
 	const password = faker.internet.password()
 	const user = await insertNewUser({ password })
-	invariant(user.name, 'User name not found')
+	invariant(user.name, 'User not found')
 	await page.goto('/login')
-	await page.getByRole('textbox', { name: /username/i }).fill(user.username)
-	await page.getByLabel(/^password$/i).fill(password)
-	await page.getByRole('button', { name: /log in/i }).click()
-	await expect(page).toHaveURL(`/`)
-
-	await expect(page.getByRole('link', { name: user.name })).toBeVisible()
+	await page.getByRole('textbox', { name: /Email/i }).fill(user.email)
+	await page.getByLabel(/^Senha$/i).fill(password)
+	await page.getByTestId('login-button').click()
+	await expect(page).toHaveURL(`/home`)
 })
 
 test('reset password with a link', async ({ page, insertNewUser }) => {
@@ -150,24 +145,24 @@ test('reset password with a link', async ({ page, insertNewUser }) => {
 	invariant(user.name, 'User name not found')
 	await page.goto('/login')
 
-	await page.getByRole('link', { name: /forgot password/i }).click()
+	await page.getByRole('link', { name: /Esqueceu a senha/i }).click()
 	await expect(page).toHaveURL('/forgot-password')
 
 	await expect(
-		page.getByRole('heading', { name: /forgot password/i }),
+		page.getByRole('heading', { name: /Esqueceu sua senha/i }),
 	).toBeVisible()
-	await page.getByRole('textbox', { name: /username/i }).fill(user.username)
-	await page.getByRole('button', { name: /recover password/i }).click()
+	await page.getByRole('textbox', { name: /email/i }).fill(user.email)
+	await page.getByRole('button', { name: /Recuperar senha/i }).click()
 	await expect(
-		page.getByRole('button', { name: /recover password/i, disabled: true }),
+		page.getByRole('button', { name: /Recuperar senha/i, disabled: true }),
 	).toBeVisible()
-	await expect(page.getByText(/check your email/i)).toBeVisible()
+	await expect(page.getByText(/Verifique seu e-mail/i)).toBeVisible()
 
 	const email = await readEmail(user.email)
 	invariant(email, 'Email not found')
-	expect(email.subject).toMatch(/password reset/i)
+	expect(email.subject).toMatch(/Redefinição de senha/i)
 	expect(email.to).toBe(user.email.toLowerCase())
-	expect(email.from).toBe('hello@epicstack.dev')
+	expect(email.from).toBe('suporte@oabnamedida.com.br')
 	const resetPasswordUrl = extractUrl(email.text)
 	invariant(resetPasswordUrl, 'Reset password URL not found')
 	await page.goto(resetPasswordUrl)
@@ -176,61 +171,59 @@ test('reset password with a link', async ({ page, insertNewUser }) => {
 
 	await page
 		.getByRole('main')
-		.getByRole('button', { name: /submit/i })
+		.getByRole('button', { name: /Validar/i })
 		.click()
 
 	await expect(page).toHaveURL(`/reset-password`)
 	const newPassword = faker.internet.password()
-	await page.getByLabel(/^new password$/i).fill(newPassword)
-	await page.getByLabel(/^confirm password$/i).fill(newPassword)
+	await page.getByLabel(/^Nova senha$/i).fill(newPassword)
+	await page.getByLabel(/^Confirmar senha$/i).fill(newPassword)
 
-	await page.getByRole('button', { name: /reset password/i }).click()
+	await page.getByRole('button', { name: /Redefinir senha/i }).click()
 	await expect(
-		page.getByRole('button', { name: /reset password/i, disabled: true }),
+		page.getByRole('button', { name: /Redefinir senha/i, disabled: true }),
 	).toBeVisible()
 
 	await expect(page).toHaveURL('/login')
-	await page.getByRole('textbox', { name: /username/i }).fill(user.username)
-	await page.getByLabel(/^password$/i).fill(originalPassword)
-	await page.getByRole('button', { name: /log in/i }).click()
+	await page.getByRole('textbox', { name: /email/i }).fill(user.email)
+	await page.getByLabel(/^Senha$/i).fill(originalPassword)
+	await page.getByTestId('login-button').click()
 
-	await expect(page.getByText(/invalid username or password/i)).toBeVisible()
+	await expect(page.getByText(/Email ou senha incorretos/i)).toBeVisible()
 
-	await page.getByLabel(/^password$/i).fill(newPassword)
-	await page.getByRole('button', { name: /log in/i }).click()
+	await page.getByLabel(/^Senha$/i).fill(newPassword)
+	await page.getByTestId('login-button').click()
 
-	await expect(page).toHaveURL(`/`)
-
-	await expect(page.getByRole('link', { name: user.name })).toBeVisible()
+	await expect(page).toHaveURL(`/home`)
 })
 
 test('reset password with a short code', async ({ page, insertNewUser }) => {
 	const user = await insertNewUser()
 	await page.goto('/login')
 
-	await page.getByRole('link', { name: /forgot password/i }).click()
+	await page.getByRole('link', { name: /Esqueceu a senha/i }).click()
 	await expect(page).toHaveURL('/forgot-password')
 
 	await expect(
-		page.getByRole('heading', { name: /forgot password/i }),
+		page.getByRole('heading', { name: /Esqueceu sua senha/i }),
 	).toBeVisible()
-	await page.getByRole('textbox', { name: /username/i }).fill(user.username)
-	await page.getByRole('button', { name: /recover password/i }).click()
+	await page.getByRole('textbox', { name: /email/i }).fill(user.email)
+	await page.getByRole('button', { name: /Recuperar senha/i }).click()
 	await expect(
-		page.getByRole('button', { name: /recover password/i, disabled: true }),
+		page.getByRole('button', { name: /Recuperar senha/i, disabled: true }),
 	).toBeVisible()
-	await expect(page.getByText(/check your email/i)).toBeVisible()
+	await expect(page.getByText(/Verifique seu e-mail/i)).toBeVisible()
 
 	const email = await readEmail(user.email)
 	invariant(email, 'Email not found')
-	expect(email.subject).toMatch(/password reset/i)
+	expect(email.subject).toMatch(/Redefinição de senha/i)
 	expect(email.to).toBe(user.email)
-	expect(email.from).toBe('hello@epicstack.dev')
+	expect(email.from).toBe('suporte@oabnamedida.com.br')
 	const codeMatch = email.text.match(CODE_REGEX)
 	const code = codeMatch?.groups?.code
 	invariant(code, 'Reset Password code not found')
-	await page.getByRole('textbox', { name: /code/i }).fill(code)
-	await page.getByRole('button', { name: /submit/i }).click()
+	await page.getByRole('textbox', { name: /Código/i }).fill(code)
+	await page.getByRole('button', { name: /Validar/i }).click()
 
 	await expect(page).toHaveURL(`/reset-password`)
 })

@@ -163,6 +163,7 @@ export default function LoginPage() {
 
 					<div className="flex items-center justify-between gap-6 pt-3">
 						<StatusButton
+							data-testid="login-button"
 							className="w-full"
 							status={isPending ? 'pending' : form.status ?? 'idle'}
 							type="submit"

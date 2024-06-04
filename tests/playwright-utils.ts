@@ -14,7 +14,6 @@ export * from './db-utils.ts'
 
 type GetOrInsertUserOptions = {
 	id?: string
-	username?: UserModel['username']
 	password?: string
 	email?: UserModel['email']
 }
@@ -22,17 +21,15 @@ type GetOrInsertUserOptions = {
 type User = {
 	id: string
 	email: string
-	username: string
 	name: string | null
 }
 
 async function getOrInsertUser({
 	id,
-	username,
 	password,
 	email,
 }: GetOrInsertUserOptions = {}): Promise<User> {
-	const select = { id: true, email: true, username: true, name: true }
+	const select = { id: true, email: true, name: true }
 	if (id) {
 		return await prisma.user.findUniqueOrThrow({
 			select,
@@ -40,16 +37,23 @@ async function getOrInsertUser({
 		})
 	} else {
 		const userData = createUser()
-		username ??= userData.username
-		password ??= userData.username
+		password ??= userData.email
 		email ??= userData.email
 		return await prisma.user.create({
 			select,
 			data: {
 				...userData,
 				email,
-				username,
-				roles: { connect: { name: 'user' } },
+				roles: {
+					create: {
+						role: {
+							connectOrCreate: {
+								create: { name: 'user' },
+								where: { name: 'user' },
+							},
+						},
+					},
+				},
 				password: { create: { hash: await getPasswordHash(password) } },
 			},
 		})

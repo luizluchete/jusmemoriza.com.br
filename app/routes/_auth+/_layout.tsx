@@ -1,8 +1,7 @@
-import { Outlet, useMatches } from '@remix-run/react'
+import { Outlet } from '@remix-run/react'
 import backgroundImage from '#app/components/ui/img/background_login.svg'
 import logoBranco from '#app/components/ui/img/logo_jusmemoriza_branco.png'
 import logoLight from '#app/components/ui/img/logo_jusmemoriza_light.png'
-import { Icon } from '#app/components/ui/icon'
 
 export default function LayoutAuth() {
 	return (
