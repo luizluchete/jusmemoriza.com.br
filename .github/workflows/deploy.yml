@@ -57,8 +57,8 @@ jobs:
       - name: 🔎 Type check
         run: npm run typecheck --if-present
 
-  setup-postgres-test:
-    name: 🐘 Setup Postgres
+  vitest:
+    name: ⚡ Vitest
     runs-on: ubuntu-22.04
     services:
       postgres:
@@ -72,20 +72,6 @@ jobs:
         options:
           --health-cmd pg_isready --health-interval 10s --health-timeout 5s
           --health-retries 5
-
-    steps:
-      - name: ⬇️ Checkout repo
-        uses: actions/checkout@v4
-
-      - name: ⎔ Setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-  vitest:
-    name: ⚡ Vitest
-    runs-on: ubuntu-22.04
-    needs: setup-postgres-test
     steps:
       - name: ⬇️ Checkout repo
         uses: actions/checkout@v4
@@ -110,8 +96,19 @@ jobs:
   playwright:
     name: 🎭 Playwright
     runs-on: ubuntu-22.04
-    needs: setup-postgres-test
     timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vitest
+        ports:
+          - 5499:5432
+        options:
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s
+          --health-retries 5
     steps:
       - name: ⬇️ Checkout repo
         uses: actions/checkout@v4
