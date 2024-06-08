@@ -59,25 +59,15 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	const userId = await getUserId(request)
 
 	if (existingConnection && userId) {
-		if (existingConnection.userId === userId) {
-			return redirectWithToast(
-				'/settings/profile/connections',
-				{
-					title: 'Already Connected',
-					description: `Your "${profile.username}" ${label} account is already connected.`,
-				},
-				{ headers: destroyRedirectTo },
-			)
-		} else {
-			return redirectWithToast(
-				'/settings/profile/connections',
-				{
-					title: 'Already Connected',
-					description: `The "${profile.username}" ${label} account is already connected to another account.`,
-				},
-				{ headers: destroyRedirectTo },
-			)
-		}
+		return redirectWithToast(
+			'/home',
+			{
+				title: 'Já conectado!',
+				description: `Seu usuário ${label} já está conectada.`,
+			},
+			{ headers: destroyRedirectTo },
+		)
+		
 	}
 
 	// If we're already logged in, then link the account
@@ -90,11 +80,11 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 			},
 		})
 		return redirectWithToast(
-			'/settings/profile/connections',
+			'/home',
 			{
-				title: 'Connected',
+				title: `Login feito com sucesso utilizando o provedor ${label}`,
 				type: 'success',
-				description: `Your "${profile.username}" ${label} account has been connected.`,
+				description: `Sua conta ${label} foi conectada.`,
 			},
 			{ headers: destroyRedirectTo },
 		)

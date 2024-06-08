@@ -27,7 +27,7 @@ const schemaAddCapitulo = z.object({
 	id: z.string().optional(),
 	name: z
 		.string({ required_error: 'Obrigatório' })
-		.min(3, { message: 'Mínimo 3 caracteres' }),
+		.min(3, { message: 'Mínimo 3 caracteres' }).trim(),
 })
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
