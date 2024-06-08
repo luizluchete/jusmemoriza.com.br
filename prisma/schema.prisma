@@ -11,20 +11,23 @@ datasource db {
 }
 
 model User {
-  id    String  @id @default(cuid())
-  email String  @unique
-  name  String?
+  id    String @id @default(cuid())
+  email String @unique
+  name  String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  image            UserImage?
-  password         Password?
-  sessions         Session[]
-  connections      Connection[]
-  roles            RolesOnUsers[]
-  quizzesResults   QuizUserResults[]
-  quizzesFavorites QuizUserFavorites[]
+  image               UserImage?
+  password            Password?
+  sessions            Session[]
+  connections         Connection[]
+  roles               RolesOnUsers[]
+  quizzesResults      QuizUserResults[]
+  quizzesFavorites    QuizUserFavorites[]
+  flashcardsFavorites FlashcardUserFavorites[]
+  flashcardAnswers    FlashcardUserAnswers[]
+  lists               ListsUser[]
 
   @@map("users")
 }
@@ -301,18 +304,47 @@ model QuizUserFavorites {
 }
 
 model Flashcard {
+  id             String                   @id @default(cuid())
+  status         Boolean                  @default(true)
+  titulo         String?
+  frente         String
+  verso          String
+  fundamento     String?
+  artigoId       String
+  artigo         Artigo                   @relation(fields: [artigoId], references: [id])
+  dificuldade    String?
+  tipo           String?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  usersFavorites FlashcardUserFavorites[]
+  userAnswers    FlashcardUserAnswers[]
+  listsUsers     ListsUsersFlashcards[]
+}
+
+model FlashcardUserFavorites {
+  flashcardId String
+  userId      String
+
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+  flashcard Flashcard @relation(fields: [flashcardId], references: [id])
+
+  @@id([flashcardId, userId])
+  @@index([userId])
+}
+
+model FlashcardUserAnswers {
   id          String   @id @default(cuid())
-  status      Boolean  @default(true)
-  titulo      String?
-  frente      String
-  verso       String
-  fundamento  String?
-  artigoId    String
-  artigo      Artigo   @relation(fields: [artigoId], references: [id])
-  dificuldade String?
-  tipo        String?
+  answer      String
+  flashcardId String
+  userId      String
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  flashcard Flashcard @relation(fields: [flashcardId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([flashcardId])
+  @@map("flashcard_user_answers")
 }
 
 model Combo {
@@ -325,6 +357,30 @@ model Combo {
   leisCombos LeisOnCombos[]
 
   @@map("combos")
+}
+
+model ListsUser {
+  id         String                 @id @default(cuid())
+  name       String
+  userId     String
+  user       User                   @relation(fields: [userId], references: [id])
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+  flashcards ListsUsersFlashcards[]
+
+  @@map("listsUsers")
+}
+
+model ListsUsersFlashcards {
+  listId      String
+  flashcardId String
+  createdAt   DateTime @default(now())
+
+  list      ListsUser @relation(fields: [listId], references: [id])
+  flashcard Flashcard @relation(fields: [flashcardId], references: [id])
+
+  @@id([listId, flashcardId])
+  @@index([listId])
 }
 
 model LeisOnCombos {

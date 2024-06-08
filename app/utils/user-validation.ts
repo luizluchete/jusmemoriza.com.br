@@ -15,9 +15,9 @@ export const PasswordSchema = z
 	.min(6, { message: 'Senha curta demais(min. 6)' })
 	.max(100, { message: 'Senha muito longa(max 100)' })
 export const NameSchema = z
-	.string({ required_error: 'Name is required' })
-	.min(3, { message: 'Name is too short' })
-	.max(40, { message: 'Name is too long' })
+	.string({ required_error: 'Preencha o Nome' })
+	.min(3, { message: 'Nome curto demais' })
+	.max(40, { message: 'Nome muito longo' })
 
 export const EmailSchema = z
 	.string({ required_error: 'Email é obrigatório' })

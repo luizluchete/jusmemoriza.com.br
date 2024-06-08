@@ -62,18 +62,14 @@ export default function LayoutApp() {
 			<div className="flex flex-1 flex-col lg:pl-52">
 				<main className="flex-1">
 					<div className="py-6">
-						<div className="container mx-auto px-2">
+						<div className="container">
 							<button
 								type="button"
 								className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
 								// onClick={() => setSidebarOpen(true)}
 							>
 								<span className="sr-only">Open sidebar</span>
-								<Icon
-									name="github-logo"
-									className="h-6 w-6"
-									aria-hidden="true"
-								/>
+								<Icon name="view-list" className="h-6 w-6" aria-hidden="true" />
 							</button>
 							<Outlet />
 						</div>

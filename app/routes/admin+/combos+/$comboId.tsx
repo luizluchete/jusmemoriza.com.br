@@ -41,7 +41,9 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 	const url = new URL(request.url)
 	const materiaId = url.searchParams.get('materiaId') || undefined
 	const materiasPromise = prisma.materia.findMany({ orderBy: { name: 'asc' } })
-	const leisPromise = prisma.lei.findMany({ where: { materiaId } })
+	const leisPromise = prisma.lei.findMany({
+		where: { materiaId, combosLeis: { none: { comboId } } },
+	})
 	const [materias, leis] = await Promise.all([materiasPromise, leisPromise])
 
 	return json({

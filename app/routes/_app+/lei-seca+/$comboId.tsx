@@ -179,10 +179,12 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	})
 
 	const bancasPromise = prisma.banca.findMany({
+		select: { id: true, name: true },
 		where: { status: true },
 		orderBy: { name: 'asc' },
 	})
 	const cargosPromise = prisma.cargo.findMany({
+		select: { id: true, name: true },
 		where: { status: true },
 		orderBy: { name: 'asc' },
 	})
@@ -251,8 +253,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		capitulos,
 		artigos,
 		countFavorites,
-		bancas: bancas.map(({ id, name }) => ({ id, name })),
-		cargos: cargos.map(({ id, name }) => ({ id, name })),
+		bancas,
+		cargos,
 	})
 }
 

@@ -1,8 +1,8 @@
-import { type LoaderFunctionArgs, json } from '@remix-run/node'
-import { Link, useLoaderData } from '@remix-run/react'
-import { prisma } from '#app/utils/db.server'
+import { type LoaderFunctionArgs } from '@remix-run/node'
+import { Link, json, useLoaderData } from '@remix-run/react'
+import { prisma } from '#app/utils/db.server.js'
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({}: LoaderFunctionArgs) {
 	const combos = await prisma.combo.findMany({
 		where: {
 			status: true,
@@ -20,7 +20,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 										artigos: {
 											some: {
 												status: true,
-												quizzes: { some: { status: true } },
+												flashcards: { some: { status: true } },
 											},
 										},
 									},
@@ -50,7 +50,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	return json({ combos: mappedCombos })
 }
 
-export default function LeiSeca() {
+export default function Index() {
 	const { combos } = useLoaderData<typeof loader>()
 	return (
 		<div className="container">
@@ -77,9 +77,9 @@ export default function LeiSeca() {
 					{combos.map(combo => (
 						<li key={combo.id}>
 							<Link
-								to={combo.id}
-								prefetch="intent"
+								to={`${combo.id}/combo`}
 								key={combo.id}
+								prefetch="intent"
 								className="col-span-1 flex h-36 rounded-md shadow-sm hover:cursor-pointer hover:brightness-95"
 							>
 								<div className="flex flex-1 items-start justify-between truncate rounded-md border-b border-r border-t border-gray-200 bg-primary shadow-2xl ">
