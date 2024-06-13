@@ -28,6 +28,7 @@ model User {
   flashcardsFavorites FlashcardUserFavorites[]
   flashcardAnswers    FlashcardUserAnswers[]
   lists               ListsUser[]
+  tempFlashcards      TempFlashcards[]
 
   @@map("users")
 }
@@ -319,6 +320,7 @@ model Flashcard {
   usersFavorites FlashcardUserFavorites[]
   userAnswers    FlashcardUserAnswers[]
   listsUsers     ListsUsersFlashcards[]
+  tempFlashcards TempFlashcards[]
 }
 
 model FlashcardUserFavorites {
@@ -394,4 +396,14 @@ model LeisOnCombos {
 
   @@id([comboId, leiId])
   @@index([comboId])
+}
+
+model TempFlashcards {
+  userId String
+  flashcardId String
+
+  flashcard Flashcard @relation(fields: [flashcardId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([userId, flashcardId])
 }

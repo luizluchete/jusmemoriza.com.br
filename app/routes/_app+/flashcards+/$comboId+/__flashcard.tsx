@@ -1,5 +1,5 @@
 import { useSpring, animated } from '@react-spring/web'
-import { Form, useSearchParams } from '@remix-run/react'
+import { Form } from '@remix-run/react'
 import { useState } from 'react'
 import { Icon } from '#app/components/ui/icon'
 import logoBranco from '#app/components/ui/img/logo_jusmemoriza_branco.png'
@@ -17,11 +17,13 @@ type FlashcardProps = {
 		lei: { name: string }
 	}
 	next: () => void
+	tipo: string
 }
 
 export function Flashcard({
 	flashcard: { frente, verso, materia, lei, id },
 	next,
+	tipo,
 }: FlashcardProps) {
 	const [flipped, setFlipped] = useState(false)
 	const { transform } = useSpring({
@@ -29,9 +31,7 @@ export function Flashcard({
 		config: { mass: 5, tension: 500, friction: 80 },
 	})
 
-	const [searchParams] = useSearchParams()
 	function colorByTipo() {
-		const tipo = searchParams.get('tipo')
 		if (tipo === 'sabia') {
 			return 'bg-green-900'
 		}

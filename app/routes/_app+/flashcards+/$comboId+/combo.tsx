@@ -5,14 +5,18 @@ import {
 	json,
 	type ActionFunctionArgs,
 } from '@remix-run/node'
-import { Outlet, useLoaderData, useLocation } from '@remix-run/react'
+import {
+	Outlet,
+	useActionData,
+	useLoaderData,
+	useNavigation,
+} from '@remix-run/react'
 import { z } from 'zod'
 import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
 import { CarouselFlashcards } from './__carousel'
 import { SheetFilterFlashcards } from './__filtro-flashcards'
 import { buscarFlashcards } from './flashcards.server'
-
 const favoriteFlashcardSchema = z.object({
 	intent: z.literal('favoritar'),
 	id: z.string(),
@@ -23,10 +27,21 @@ const answerFlashcardSchema = z.object({
 	id: z.string(),
 	answer: z.enum(['sabia', 'nao_sabia', 'duvida']),
 })
+const initialSchema = z.object({
+	intent: z.literal('load'),
+	tipo: z.enum(['default', 'sabia', 'nao_sabia', 'duvida']).default('default'),
+	materiaId: z.array(z.string()).optional(),
+	leiId: z.array(z.string()).optional(),
+	tituloId: z.array(z.string()).optional(),
+	capituloId: z.array(z.string()).optional(),
+	artigoId: z.array(z.string()).optional(),
+	onlyFavorites: z.coerce.boolean().optional(),
+})
 
 const flashcardSChema = z.discriminatedUnion('intent', [
 	favoriteFlashcardSchema,
 	answerFlashcardSchema,
+	initialSchema,
 ])
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -34,7 +49,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	const comboId = params.comboId
 	invariantResponse(comboId, 'ComboId is required', { status: 404 })
 	const url = new URL(request.url)
-	let tipo = url.searchParams.get('tipo') || 'default'
 	const materiaId = url.searchParams.getAll('materiaId')
 	const leiId = url.searchParams.getAll('leiId')
 	const tituloId = url.searchParams.getAll('tituloId')
@@ -105,12 +119,61 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		artigosPromise,
 	])
 
-	const flashcards = await buscarFlashcards({ userId, comboId, tipo })
+	const flashcards = await prisma.tempFlashcards.findMany({
+		where: { userId },
+		select: {
+			flashcard: {
+				select: {
+					frente: true,
+					fundamento: true,
+					verso: true,
+					id: true,
+					artigo: {
+						select: {
+							name: true,
+							capitulo: {
+								select: {
+									name: true,
+									titulo: {
+										select: {
+											name: true,
+											lei: {
+												select: {
+													name: true,
+													materia: { select: { name: true } },
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					usersFavorites: { where: { userId } },
+				},
+			},
+		},
+	})
 
-	return json({ flashcards, materias, leis, titulos, capitulos, artigos })
+	return json({
+		flashcards: flashcards.map(({ flashcard }) => ({
+			id: flashcard.id,
+			frente: flashcard.frente,
+			verso: flashcard.verso,
+			fundamento: flashcard.fundamento,
+			materia: flashcard.artigo.capitulo.titulo.lei.materia,
+			lei: flashcard.artigo.capitulo.titulo.lei,
+			favorite: flashcard.usersFavorites.length > 0,
+		})),
+		materias,
+		leis,
+		titulos,
+		capitulos,
+		artigos,
+	})
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request, params }: ActionFunctionArgs) {
 	const userId = await requireUserId(request)
 	const form = await request.formData()
 
@@ -151,13 +214,52 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 	}
 
+	if (intent === 'load') {
+		const { comboId } = params
+		invariantResponse(comboId, 'ComboId is required', { status: 404 })
+		const {
+			tipo,
+			artigoId,
+			capituloId,
+			leiId,
+			materiaId,
+			tituloId,
+			onlyFavorites,
+		} = submission.value
+		console.log({ ...submission.value })
+		const flashcards = await buscarFlashcards({
+			userId,
+			comboId,
+			tipo,
+			artigoId,
+			capituloId,
+			leiId,
+			materiaId,
+			onlyFavorites,
+			tituloId,
+		})
+		await prisma.tempFlashcards.deleteMany({ where: { userId } })
+		await prisma.tempFlashcards.createMany({
+			data: flashcards.map(flashcard => ({
+				userId,
+				flashcardId: flashcard.id,
+			})),
+		})
+		return json({ tipo })
+	}
+
 	return json(null)
 }
 
 export default function ComboId() {
 	const { flashcards, materias, artigos, capitulos, leis, titulos } =
 		useLoaderData<typeof loader>()
-	const location = useLocation()
+	const actionData = useActionData() as any
+	const tipo = actionData?.tipo || 'default'
+	const navigation = useNavigation()
+	const resetCarousel =
+		navigation.formData?.get('intent') === 'load' ? 'reset' : 'default'
+	console.log({ tipo })
 	return (
 		<div>
 			<Outlet />
@@ -171,7 +273,11 @@ export default function ComboId() {
 			/>
 			{flashcards.length > 0 ? (
 				<>
-					<CarouselFlashcards key={location.search} flashcards={flashcards} />
+					<CarouselFlashcards
+						key={resetCarousel}
+						tipo={tipo}
+						flashcards={flashcards}
+					/>
 				</>
 			) : (
 				<span className="flex max-w-md text-wrap text-center text-xl font-semibold">

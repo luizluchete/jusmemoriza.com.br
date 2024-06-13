@@ -19,7 +19,7 @@ export const cargoSchemaEditor = z.object({
 	id: z.string().optional(),
 	nome: z
 		.string({ required_error: 'Obrigatório' })
-		.min(3, { message: 'Mínimo 3 caracteres' }),
+		.min(3, { message: 'Mínimo 3 caracteres' }).trim(),
 	status: z.coerce.boolean().optional(),
 })
 

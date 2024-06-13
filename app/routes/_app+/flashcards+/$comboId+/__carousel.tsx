@@ -1,5 +1,5 @@
 import { type Flashcard as FlashcardPrisma } from '@prisma/client'
-import { Form, Link, useLocation, useSearchParams } from '@remix-run/react'
+import { Form, Link, useLocation, useNavigation } from '@remix-run/react'
 import { useCallback, useEffect, useState } from 'react'
 import {
 	Carousel,
@@ -22,21 +22,20 @@ import { Flashcard } from './__flashcard'
 type CarouselProps = {
 	flashcards: Array<
 		Pick<FlashcardPrisma, 'id' | 'frente' | 'verso'> & {
-			fundamento?: string
+			fundamento?: string | null
 			materia: { name: string }
 			lei: { name: string }
 			favorite: boolean
 		}
 	>
+	tipo: string
 }
-export function CarouselFlashcards({ flashcards: data }: CarouselProps) {
+export function CarouselFlashcards({ flashcards, tipo }: CarouselProps) {
 	const [api, setApi] = useState<CarouselApi>()
-	const [flashcards, setFlashcards] = useState(data)
 	const [index, setIndex] = useState(0)
 
 	const logSlidesInView = useCallback((api: CarouselApi) => {
 		if (api) {
-			console.log('slidesInView', api.slidesInView())
 			setIndex(api.slidesInView().at(0) || 0)
 		}
 	}, [])
@@ -44,18 +43,22 @@ export function CarouselFlashcards({ flashcards: data }: CarouselProps) {
 	function next() {
 		if (api?.canScrollNext()) {
 			api.scrollNext()
-		} else {
-			setFlashcards([])
 		}
 	}
 	useEffect(() => {
 		if (api) api.on('slidesInView', logSlidesInView)
 	}, [api, logSlidesInView])
 
-	const [searchParams] = useSearchParams()
-	const tipo = searchParams.get('tipo')
 	const current = flashcards[index]
-	let flashcardFavorite = data.find(f => f.id === current?.id)?.favorite
+
+	let flashcardFavorite = current.favorite
+	const navigation = useNavigation()
+	if (
+		navigation.state !== 'idle' &&
+		navigation.formData?.get('intent') === 'favoritar'
+	) {
+		flashcardFavorite = navigation.formData?.get('favorite') === 'yes'
+	}
 
 	const location = useLocation()
 	return (
@@ -67,7 +70,7 @@ export function CarouselFlashcards({ flashcards: data }: CarouselProps) {
 			<CarouselContent>
 				{flashcards.map(flashcard => (
 					<CarouselItem key={flashcard.id}>
-						<Flashcard flashcard={flashcard} next={next} />
+						<Flashcard flashcard={flashcard} next={next} tipo={tipo} />
 					</CarouselItem>
 				))}
 			</CarouselContent>

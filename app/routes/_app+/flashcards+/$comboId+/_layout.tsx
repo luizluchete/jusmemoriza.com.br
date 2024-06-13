@@ -42,6 +42,7 @@ export default function Layout() {
 	let { total, combo, user, duvida, naoSabia, sabia, favorite } =
 		useLoaderData<typeof loader>()
 	let rating = (sabia / total) * 100
+
 	return (
 		<div className="flex justify-around">
 			<div className="hidden h-min space-y-5 rounded-md bg-white p-5 shadow-md xl:block">
@@ -79,9 +80,10 @@ export default function Layout() {
 						{Number(rating) ? rating.toFixed(0) : '0'}% concluído
 					</span>
 				</div>
-				<Form action="combo">
+				<Form action="action" method="post">
+					<input type="hidden" value="load" name="intent" readOnly />
 					<div className="hidden flex-col xl:flex">
-						<button className="w-full" name="tipo" value={'sabia'}>
+						<button className="w-full" name="tipo" value="sabia">
 							<div className="mt-5 flex h-20 cursor-pointer items-center justify-around rounded-2xl bg-white shadow-xl hover:brightness-90">
 								<div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#DAEBD1] font-bold text-[#007012]">
 									{sabia}
@@ -99,7 +101,7 @@ export default function Layout() {
 							className="w-full"
 							type="submit"
 							name="tipo"
-							value={'nao_sabia'}
+							value="nao_sabia"
 						>
 							<div className="mt-2 flex h-20 cursor-pointer items-center justify-around rounded-2xl bg-white shadow-xl hover:brightness-90">
 								<div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-300 font-bold text-red-500">
@@ -114,12 +116,7 @@ export default function Layout() {
 							</div>
 						</button>
 
-						<button
-							className="w-full"
-							type="submit"
-							name="tipo"
-							value={'duvida'}
-						>
+						<button className="w-full" type="submit" name="tipo" value="duvida">
 							<div className="mt-2 flex h-20 cursor-pointer items-center justify-around rounded-2xl bg-white shadow-xl hover:brightness-90">
 								<div className="flex h-11 w-11 items-center justify-center rounded-full bg-purple-500/10 font-bold text-primary">
 									{duvida}

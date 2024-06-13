@@ -133,7 +133,7 @@ export default function FlashcardIdLists() {
 	const actionData = useActionData<typeof action>()
 
 	const isPending = useIsPending()
-	const fetcher = useFetcher()
+
 	const [form, fields] = useForm({
 		id: 'create-list-user',
 		constraint: getZodConstraint(schemaCreateList),
@@ -148,7 +148,6 @@ export default function FlashcardIdLists() {
 	const submittinNewList =
 		actionData?.result?.initialValue?.intent === 'createList' &&
 		actionData.result.status === 'success'
-	console.log({ submittinNewList })
 	useEffect(() => {
 		if (submittinNewList) {
 			setOpenCreateList(false)
@@ -171,57 +170,17 @@ export default function FlashcardIdLists() {
 					{lists.length === 0 && <div>Nenhuma lista cadastrada</div>}
 					<ul className="max-h-80 overflow-y-auto">
 						{lists.map(list => {
-							const hasFlashcard = list.flashcards.find(
+							const hasFlashcard = !!list.flashcards.find(
 								flashcard => flashcard.flashcardId === flashcardId,
 							)
 							return (
-								<li
+								<ItemFlashcardsList
 									key={list.id}
-									className="flex items-center justify-between px-6 py-1"
-								>
-									<div className="flex flex-col">
-										<span className="font-semibold text-primary">
-											{list.name}
-										</span>
-										<div className="space-x-2">
-											<span className="text-primary">
-												Numero de flashcards:
-											</span>
-											<span className="text-sm text-[#54595E99]">
-												{list.flashcards.length}
-											</span>
-										</div>
-									</div>
-									<fetcher.Form method="post">
-										<input
-											type="text"
-											readOnly
-											hidden
-											name="intent"
-											value="flashcardOnList"
-										/>
-										<input
-											type="text"
-											readOnly
-											hidden
-											name="listId"
-											value={list.id}
-										/>
-										<button
-											type="submit"
-											name="add"
-											value={!hasFlashcard ? 'on' : ''}
-										>
-											{!hasFlashcard ? (
-												<div className="h-7 w-7 cursor-pointer rounded border-2 border-primary hover:bg-primary/10" />
-											) : (
-												<div className="flex h-7 w-7 cursor-pointer items-center justify-center rounded border-2 border-primary bg-primary hover:bg-primary/90">
-													<Icon name="check" className="h-7 w-7 text-white" />
-												</div>
-											)}
-										</button>
-									</fetcher.Form>
-								</li>
+									id={list.id}
+									name={list.name}
+									quantity={list.flashcards.length}
+									hasFlashcard={hasFlashcard}
+								/>
 							)
 						})}
 					</ul>
@@ -277,5 +236,59 @@ export default function FlashcardIdLists() {
 				</div>
 			</DialogContent>
 		</Dialog>
+	)
+}
+
+function ItemFlashcardsList({
+	hasFlashcard,
+	id,
+	name,
+	quantity,
+}: {
+	id: string
+	name: string
+	quantity: number
+	hasFlashcard: boolean
+}) {
+	const fetcher = useFetcher()
+
+	let hasFlashcardOtimistic = hasFlashcard
+	if (fetcher.state !== 'idle' && fetcher.formData?.get('flashcardOnList')) {
+		hasFlashcardOtimistic = fetcher.formData?.get('add') === 'on'
+	}
+
+	return (
+		<li className="flex items-center justify-between px-6 py-1">
+			<div className="flex flex-col">
+				<span className="font-semibold text-primary">{name}</span>
+				<div className="space-x-2">
+					<span className="text-primary">Numero de flashcards:</span>
+					<span className="text-sm text-[#54595E99]">{quantity}</span>
+				</div>
+			</div>
+			<fetcher.Form method="post">
+				<input
+					type="text"
+					readOnly
+					hidden
+					name="intent"
+					value="flashcardOnList"
+				/>
+				<input type="text" readOnly hidden name="listId" value={id} />
+				<button
+					type="submit"
+					name="add"
+					value={!hasFlashcardOtimistic ? 'on' : ''}
+				>
+					{!hasFlashcardOtimistic ? (
+						<div className="h-7 w-7 cursor-pointer rounded border-2 border-primary hover:bg-primary/10" />
+					) : (
+						<div className="flex h-7 w-7 cursor-pointer items-center justify-center rounded border-2 border-primary bg-primary hover:bg-primary/90">
+							<Icon name="check" className="h-7 w-7 text-white" />
+						</div>
+					)}
+				</button>
+			</fetcher.Form>
+		</li>
 	)
 }

@@ -1,6 +1,7 @@
 import { useSubmit, useSearchParams, Form } from '@remix-run/react'
 import { useEffect, useRef, useState } from 'react'
 import { CheckboxField } from '#app/components/forms'
+import { Button } from '#app/components/ui/button'
 import { Combobox } from '#app/components/ui/combobox'
 import { Icon } from '#app/components/ui/icon'
 import { Label } from '#app/components/ui/label'
@@ -65,13 +66,17 @@ export function SheetFilterFlashcards({
 		submit,
 	])
 
+	function handleActionSubmit() {
+		submit(formRef.current, { method: 'post' })
+	}
+
 	return (
 		<Sheet>
 			<SheetTrigger className="mb-1 flex w-full items-center justify-center rounded-md border border-primary py-1 text-primary hover:bg-primary/80 hover:text-primary-foreground">
 				<Icon name="magnifying-glass" className="h-6 w-6" />
 				<span>Filtros</span>
 			</SheetTrigger>
-			<SheetContent className="w-[400px] sm:w-[540px]">
+			<SheetContent className="w-[400px] overflow-auto sm:w-[540px]">
 				<SheetHeader>
 					<SheetTitle>{title}</SheetTitle>
 				</SheetHeader>
@@ -81,6 +86,7 @@ export function SheetFilterFlashcards({
 					id="search-flashcards"
 					onChange={e => submit(e.currentTarget)}
 				>
+					<input type="hidden" name="intent" value="load" readOnly />
 					{materiasSelected.map(({ id }) => (
 						<input key={id} type="hidden" value={id} name="materiaId" />
 					))}
@@ -207,6 +213,7 @@ export function SheetFilterFlashcards({
 						</RadioGroup>
 					</div>
 				</Form>
+				<Button onClick={handleActionSubmit}>Buscar</Button>
 				<div className="mt-5">
 					<h2 className="text-xl font-semibold">Filtrar por:</h2>
 					<div className="flex flex-col space-y-1">
