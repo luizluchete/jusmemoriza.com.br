@@ -63,12 +63,12 @@ test('when a user is logged in, it creates the connection', async () => {
 		code: googleUser.code,
 	})
 	const response = await loader({ request, params: PARAMS, context: {} })
-	expect(response).toHaveRedirect('/settings/profile/connections')
+	expect(response).toHaveRedirect('/home')
 	await expect(response).toSendToast(
 		expect.objectContaining({
-			title: 'Connected',
+			description: 'Login feito com sucesso utilizando o provedor Google',
+			title: 'Sua conta Google foi conectada.',
 			type: 'success',
-			description: expect.stringContaining(googleUser.name),
 		}),
 	)
 	const connection = await prisma.connection.findFirst({
@@ -99,12 +99,12 @@ test(`when a user is logged in and has already connected, it doesn't do anything
 		code: googleUser.code,
 	})
 	const response = await loader({ request, params: PARAMS, context: {} })
-	expect(response).toHaveRedirect('/settings/profile/connections')
+	expect(response).toHaveRedirect('/home')
 	expect(response).toSendToast(
 		expect.objectContaining({
-			title: 'Already Connected',
+			title: 'Já conectado!',
 			description: expect.stringContaining(
-				`Your "${googleUser.name}" Google account is already connected.`,
+				`Seu usuário Google já está conectada.`,
 			),
 		}),
 	)
@@ -160,12 +160,12 @@ test('gives an error if the account is already connected to another user', async
 		code: googleUser.code,
 	})
 	const response = await loader({ request, params: PARAMS, context: {} })
-	expect(response).toHaveRedirect('/settings/profile/connections')
+	expect(response).toHaveRedirect('/home')
 	await expect(response).toSendToast(
 		expect.objectContaining({
-			title: 'Already Connected',
+			title: 'Já conectado!',
 			description: expect.stringContaining(
-				'already connected to another account',
+				'Seu usuário Google já está conectada.',
 			),
 		}),
 	)

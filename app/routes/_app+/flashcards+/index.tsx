@@ -69,7 +69,7 @@ export default function Index() {
 
 				{combos.length === 0 && (
 					<div className="flex items-center justify-center p-20">
-						Nenhuma combo encontrado
+						Nenhum combo encontrado
 					</div>
 				)}
 

@@ -67,7 +67,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 			},
 			{ headers: destroyRedirectTo },
 		)
-		
 	}
 
 	// If we're already logged in, then link the account
@@ -82,9 +81,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		return redirectWithToast(
 			'/home',
 			{
-				title: `Login feito com sucesso utilizando o provedor ${label}`,
+				title: `Sua conta ${label} foi conectada.`,
+				description: `Login feito com sucesso utilizando o provedor ${label}`,
 				type: 'success',
-				description: `Sua conta ${label} foi conectada.`,
 			},
 			{ headers: destroyRedirectTo },
 		)
