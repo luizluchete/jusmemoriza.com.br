@@ -1,11 +1,11 @@
 import { invariantResponse } from '@epic-web/invariant'
 import { type LoaderFunctionArgs, json } from '@remix-run/node'
-import { Link, Outlet, useLoaderData } from '@remix-run/react'
+import { Link, Outlet, useLoaderData, useSearchParams } from '@remix-run/react'
 import { Icon } from '#app/components/ui/icon'
 import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
 import { getUserImgSrc } from '#app/utils/misc'
-import { countFlashcards } from './flashcards.server'
+import { buscaRatingDoCombo, countFlashcards } from './flashcards.server'
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
 	const userId = await requireUserId(request)
@@ -13,6 +13,14 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		select: { name: true, image: { select: { id: true } } },
 		where: { id: userId },
 	})
+
+	const url = new URL(request.url)
+	const materiaId = url.searchParams.getAll('materiaId')
+	const leiId = url.searchParams.getAll('leiId')
+	const tituloId = url.searchParams.getAll('tituloId')
+	const capituloId = url.searchParams.getAll('capituloId')
+	const artigoId = url.searchParams.getAll('artigoId')
+	const onlyFavorites = url.searchParams.get('favorite') === 'on'
 
 	const comboId = params.comboId
 	invariantResponse(comboId, 'ComboId is required', { status: 404 })
@@ -22,10 +30,20 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	})
 
 	invariantResponse(combo, 'ComboId is required', { status: 404 })
-	const { duvida, favorite, naoSabia, sabia, total } = await countFlashcards({
-		userId,
-		comboId,
-	})
+	const [{ duvida, favorite, naoSabia, sabia, total }, rating] =
+		await Promise.all([
+			countFlashcards({
+				userId,
+				comboId,
+				artigoId,
+				capituloId,
+				leiId,
+				materiaId,
+				onlyFavorites,
+				tituloId,
+			}),
+			buscaRatingDoCombo(comboId, userId),
+		])
 
 	return json({
 		duvida,
@@ -35,13 +53,21 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		total,
 		combo,
 		user,
+		rating,
 	})
 }
 
 export default function Layout() {
-	let { total, combo, user, duvida, naoSabia, sabia, favorite } =
+	let { total, combo, user, duvida, naoSabia, sabia, favorite, rating } =
 		useLoaderData<typeof loader>()
-	let rating = (sabia / total) * 100
+
+	const [searchParams] = useSearchParams()
+
+	function getSearchParams() {
+		const newParams = searchParams
+		newParams.delete('page')
+		return newParams.toString()
+	}
 	return (
 		<div className="flex justify-around">
 			<div className="hidden h-min space-y-5 rounded-md bg-white p-5 shadow-md xl:block">
@@ -82,7 +108,7 @@ export default function Layout() {
 					</span>
 				</div>
 				<div className="hidden flex-col xl:flex">
-					<Link to={`type/know`}>
+					<Link to={`type/know?${getSearchParams()}`}>
 						<button
 							id="card-sabia"
 							className="w-full"
@@ -103,7 +129,7 @@ export default function Layout() {
 							</div>
 						</button>
 					</Link>
-					<Link to={`type/noknow`}>
+					<Link to={`type/noknow?${getSearchParams()}`}>
 						<button
 							id="card-nao-sabia"
 							className="w-full"
@@ -124,7 +150,7 @@ export default function Layout() {
 							</div>
 						</button>
 					</Link>
-					<Link to={`type/doubt`}>
+					<Link to={`type/doubt?${getSearchParams()}`}>
 						<button
 							id="card-duvida"
 							className="w-full"

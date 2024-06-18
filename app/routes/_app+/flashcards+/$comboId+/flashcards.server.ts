@@ -14,7 +14,7 @@ type Input = {
 	artigoId?: string[]
 }
 
-export async function countFlashcards({ comboId, userId }: Input) {
+export async function buscaRatingDoCombo(comboId: string, userId: string) {
 	const query = await prisma.$queryRaw<
 		{
 			total: number
@@ -24,7 +24,79 @@ export async function countFlashcards({ comboId, userId }: Input) {
 			favorite: number
 		}[]
 	>`
-    
+  select count(f.id) total,
+         sum(case (select fua.answer from flashcard_user_answers fua
+                    where fua."flashcardId" = f.id
+                      and fua."userId" = ${userId}
+                    order by fua."createdAt" desc
+                    limit 1) when 'sabia' then 1 else 0 end) sabia
+    from "Flashcard" f, materias, leis, titulos, capitulos, artigos
+   where f."artigoId" = artigos.id
+     and artigos."capituloId" = capitulos.id
+     and capitulos."tituloId" = titulos.id
+     and titulos."leiId" = leis.id 
+     and leis."materiaId" = materias.id
+     and materias.status = true
+     and leis.status = true
+     and titulos.status = true 
+     and capitulos.status = true
+     and artigos.status = true
+     and f.status = true
+     and exists (select 1 from "LeisOnCombos" loc
+                    where loc."leiId" = leis.id
+                 and loc."comboId" = ${comboId})
+                     
+`
+	return (Number(query[0].sabia) / Number(query[0].total)) * 100
+}
+
+export async function countFlashcards({
+	comboId,
+	userId,
+	artigoId,
+	capituloId,
+	leiId,
+	materiaId,
+	onlyFavorites,
+	page,
+	tituloId,
+}: Input) {
+	const whereMateria =
+		materiaId && materiaId.length > 0
+			? Prisma.sql`and materias.id in (${Prisma.join(materiaId)})`
+			: Prisma.empty
+	const whereLei =
+		leiId && leiId.length > 0
+			? Prisma.sql`and leis.id in (${Prisma.join(leiId)})`
+			: Prisma.empty
+	const whereTitulo =
+		tituloId && tituloId.length > 0
+			? Prisma.sql`and titulos.id in (${Prisma.join(tituloId)})`
+			: Prisma.empty
+	const whereCapitulo =
+		capituloId && capituloId.length > 0
+			? Prisma.sql`and capitulos.id in (${Prisma.join(capituloId)})`
+			: Prisma.empty
+	const whereArtigo =
+		artigoId && artigoId.length > 0
+			? Prisma.sql`and artigos.id in (${Prisma.join(artigoId)})`
+			: Prisma.empty
+
+	const whereFavorite = onlyFavorites
+		? Prisma.sql`and exists (select 1 from "FlashcardUserFavorites" fuf
+                                                                where fuf."flashcardId" = f.id
+                                                                  and fuf."userId" = ${userId})`
+		: Prisma.empty
+
+	const query = await prisma.$queryRaw<
+		{
+			total: number
+			sabia: number
+			duvida: number
+			naoSabia: number
+			favorite: number
+		}[]
+	>`
     select count(f.id) total,
            sum(coalesce((select 1 from "FlashcardUserFavorites" fuf
                  		      where fuf."flashcardId" = f.id
@@ -56,6 +128,12 @@ export async function countFlashcards({ comboId, userId }: Input) {
        and capitulos.status = true
        and artigos.status = true
        and f.status = true
+      ${whereMateria}
+       ${whereLei}
+       ${whereTitulo}
+       ${whereCapitulo}
+       ${whereArtigo}
+       ${whereFavorite}
        and exists (select 1 from "LeisOnCombos" loc
      	   		        where loc."leiId" = leis.id
      				      and loc."comboId" = ${comboId})
@@ -95,20 +173,31 @@ export async function buscarFlashcards({
 		tipoQuery = 'nao_sabia'
 	}
 
-	const whereMateria = materiaId
-		? Prisma.sql`and materias.id in (${Prisma.join(materiaId)})`
-		: Prisma.empty
-	const whereLei = leiId
-		? Prisma.sql`and leis.id in (${Prisma.join(leiId)})`
-		: Prisma.empty
-	const whereTitulo = tituloId
-		? Prisma.sql`and titulos.id in (${Prisma.join(tituloId)})`
-		: Prisma.empty
-	const whereCapitulo = capituloId
-		? Prisma.sql`and capitulos.id in (${Prisma.join(capituloId)})`
-		: Prisma.empty
-	const whereArtigo = artigoId
-		? Prisma.sql`and artigos.id in (${Prisma.join(artigoId)})`
+	const whereMateria =
+		materiaId && materiaId.length > 0
+			? Prisma.sql`and materias.id in (${Prisma.join(materiaId)})`
+			: Prisma.empty
+	const whereLei =
+		leiId && leiId.length > 0
+			? Prisma.sql`and leis.id in (${Prisma.join(leiId)})`
+			: Prisma.empty
+	const whereTitulo =
+		tituloId && tituloId.length > 0
+			? Prisma.sql`and titulos.id in (${Prisma.join(tituloId)})`
+			: Prisma.empty
+	const whereCapitulo =
+		capituloId && capituloId.length > 0
+			? Prisma.sql`and capitulos.id in (${Prisma.join(capituloId)})`
+			: Prisma.empty
+	const whereArtigo =
+		artigoId && artigoId.length > 0
+			? Prisma.sql`and artigos.id in (${Prisma.join(artigoId)})`
+			: Prisma.empty
+
+	const whereFavorite = onlyFavorites
+		? Prisma.sql`and exists (select 1 from "FlashcardUserFavorites" fuf
+                                                                where fuf."flashcardId" = f.id
+                                                                  and fuf."userId" = ${userId})`
 		: Prisma.empty
 
 	if (tipoQuery === 'initial') {
@@ -139,6 +228,7 @@ export async function buscarFlashcards({
        ${whereTitulo}
        ${whereCapitulo}
        ${whereArtigo}
+       ${whereFavorite}
        and exists (select 1 from "LeisOnCombos" loc
      	   		        where loc."leiId" = leis.id
      				          and loc."comboId" = ${comboId})
@@ -182,6 +272,12 @@ select f.id,
        and capitulos.status = true
        and artigos.status = true
        and f.status = true
+       ${whereMateria}
+       ${whereLei}
+       ${whereTitulo}
+       ${whereCapitulo}
+       ${whereArtigo}
+       ${whereFavorite}
        and exists (select 1 from "LeisOnCombos" loc
      	   		        where loc."leiId" = leis.id
      				          and loc."comboId" = ${comboId})

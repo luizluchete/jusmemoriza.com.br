@@ -1,11 +1,14 @@
-import { useSubmit, useSearchParams, Form } from '@remix-run/react'
+import {
+	useSubmit,
+	useSearchParams,
+	Form,
+	useLoaderData,
+} from '@remix-run/react'
 import { useEffect, useRef, useState } from 'react'
 import { CheckboxField } from '#app/components/forms'
 import { Button } from '#app/components/ui/button'
 import { Combobox } from '#app/components/ui/combobox'
 import { Icon } from '#app/components/ui/icon'
-import { Label } from '#app/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '#app/components/ui/radio-group'
 import {
 	Sheet,
 	SheetTrigger,
@@ -13,24 +16,14 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from '#app/components/ui/sheet'
+import { type loader } from './type.$type'
 
-export function SheetFilterFlashcards({
-	title,
-	materias,
-	leis,
-	titulos,
-	capitulos,
-	artigos,
-}: {
-	title: string
-	materias: { id: string; name: string }[]
-	leis: { id: string; name: string }[]
-	titulos: { id: string; name: string }[]
-	capitulos: { id: string; name: string }[]
-	artigos: { id: string; name: string }[]
-}) {
+export function SheetFilterFlashcards({ title }: { title: string }) {
 	const formRef = useRef<HTMLFormElement>(null)
 	const submit = useSubmit()
+	const { artigos, capitulos, leis, materias, titulos } =
+		useLoaderData<typeof loader>()
+
 	const [searchParams] = useSearchParams()
 	const searchFavorite = !!searchParams.get('favorite')
 	const materiaId = searchParams.getAll('materiaId')
@@ -39,13 +32,9 @@ export function SheetFilterFlashcards({
 	const capituloId = searchParams.getAll('capituloId')
 	const artigoId = searchParams.getAll('artigoId')
 	const searchMaterias = materias.filter(({ id }) => materiaId.includes(id))
-
 	const searchLeis = leis.filter(({ id }) => leiId.includes(id))
-
 	const searchTitulos = titulos.filter(({ id }) => tituloId.includes(id))
-
 	const searchCapitulos = capitulos.filter(({ id }) => capituloId.includes(id))
-
 	const searchArtigos = artigos.filter(({ id }) => artigoId.includes(id))
 	const [materiasSelected, setMateriasSelected] = useState(searchMaterias)
 	const [leisSelected, setLeisSelected] = useState(searchLeis)
@@ -66,13 +55,9 @@ export function SheetFilterFlashcards({
 		submit,
 	])
 
-	function handleActionSubmit() {
-		submit(formRef.current, { method: 'post' })
-	}
-
 	return (
 		<Sheet>
-			<SheetTrigger className="mb-1 flex w-full items-center justify-center rounded-md border border-primary py-1 text-primary hover:bg-primary/80 hover:text-primary-foreground">
+			<SheetTrigger className="mb-1 flex w-full max-w-md items-center justify-center rounded-md border border-primary py-1 text-primary hover:bg-primary/80 hover:text-primary-foreground">
 				<Icon name="magnifying-glass" className="h-6 w-6" />
 				<span>Filtros</span>
 			</SheetTrigger>
@@ -86,7 +71,6 @@ export function SheetFilterFlashcards({
 					id="search-flashcards"
 					onChange={e => submit(e.currentTarget)}
 				>
-					<input type="hidden" name="intent" value="load" readOnly />
 					{materiasSelected.map(({ id }) => (
 						<input key={id} type="hidden" value={id} name="materiaId" />
 					))}
@@ -102,11 +86,6 @@ export function SheetFilterFlashcards({
 					{artigosSelected.map(({ id }) => (
 						<input key={id} type="hidden" value={id} name="artigoId" />
 					))}
-					<input
-						type="hidden"
-						defaultValue={searchParams.get('tipo') || ''}
-						name="tipo"
-					/>
 
 					<Combobox
 						placeholder="Matérias..."
@@ -185,35 +164,8 @@ export function SheetFilterFlashcards({
 							type: 'checkbox',
 						}}
 					/>
-					<div>
-						<span className="font-semibold">Listar: </span>
-						<RadioGroup
-							name="tipo"
-							className="rounded-md border border-primary p-1"
-							defaultValue={searchParams.get('tipo') || 'default'}
-						>
-							<div className="flex items-center space-x-2">
-								<RadioGroupItem value="default" id="default" />
-								<Label htmlFor="default">Padrão</Label>
-							</div>
-							<div className="flex items-center space-x-2">
-								<RadioGroupItem value="sabia" id="sabia" />
-								<Label htmlFor="sabia">Sabia</Label>
-							</div>
-
-							<div className="flex items-center space-x-2">
-								<RadioGroupItem value="duvida" id="duvida" />
-								<Label htmlFor="duvida">Dúvida</Label>
-							</div>
-
-							<div className="flex items-center space-x-2">
-								<RadioGroupItem value="nao_sabia" id="nao_sabia" />
-								<Label htmlFor="nao_sabia">Não Sabia</Label>
-							</div>
-						</RadioGroup>
-					</div>
+					<Button type="submit">Buscar</Button>
 				</Form>
-				<Button onClick={handleActionSubmit}>Buscar</Button>
 				<div className="mt-5">
 					<h2 className="text-xl font-semibold">Filtrar por:</h2>
 					<div className="flex flex-col space-y-1">

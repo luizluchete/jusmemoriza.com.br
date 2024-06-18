@@ -35,6 +35,7 @@ import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
 import './teste.css'
 import { cn } from '#app/utils/misc'
+import { SheetFilterFlashcards } from './__filtro-flashcards'
 import { buscarFlashcards } from './flashcards.server'
 
 const favoriteFlashcardSchema = z.object({
@@ -52,7 +53,6 @@ const flashcardSChema = z.discriminatedUnion('intent', [
 	answerFlashcardSchema,
 ])
 export async function loader({ request, params }: LoaderFunctionArgs) {
-	console.log('loader server')
 	const userId = await requireUserId(request)
 	const comboId = params.comboId
 	invariantResponse(comboId, 'ComboId is required', { status: 404 })
@@ -60,12 +60,90 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	invariantResponse(type, 'type is required', { status: 404 })
 	const url = new URL(request.url)
 	const page = Number(url.searchParams.get('page')) || 1
+	const materiaId = url.searchParams.getAll('materiaId')
+	const leiId = url.searchParams.getAll('leiId')
+	const tituloId = url.searchParams.getAll('tituloId')
+	const capituloId = url.searchParams.getAll('capituloId')
+	const artigoId = url.searchParams.getAll('artigoId')
+	const onlyFavorites = url.searchParams.get('favorite') === 'on'
+
+	const materiasPromise = prisma.materia.findMany({
+		select: { id: true, name: true },
+		where: {
+			status: true,
+			Lei: { some: { combosLeis: { some: { comboId } } } },
+		},
+	})
+	const leisPromise = prisma.lei.findMany({
+		select: { id: true, name: true },
+		where: {
+			status: true,
+			combosLeis: { some: { comboId } },
+			materiaId: materiaId.length ? { in: materiaId } : undefined,
+		},
+	})
+	const titulosPromise = prisma.titulo.findMany({
+		select: { id: true, name: true },
+		where: {
+			status: true,
+			leiId: leiId.length ? { in: leiId } : undefined,
+			lei: {
+				combosLeis: { some: { comboId } },
+				materiaId: materiaId.length ? { in: materiaId } : undefined,
+			},
+		},
+	})
+	const capitulosPromise = prisma.capitulo.findMany({
+		select: { id: true, name: true },
+		where: {
+			status: true,
+			tituloId: tituloId.length ? { in: tituloId } : undefined,
+			titulo: {
+				leiId: leiId.length ? { in: leiId } : undefined,
+				lei: {
+					combosLeis: { some: { comboId } },
+					materiaId: materiaId.length ? { in: materiaId } : undefined,
+				},
+			},
+		},
+	})
+	const artigosPromise = prisma.artigo.findMany({
+		select: { id: true, name: true },
+		where: {
+			status: true,
+			capituloId: capituloId.length ? { in: capituloId } : undefined,
+			capitulo: {
+				tituloId: tituloId.length ? { in: tituloId } : undefined,
+				titulo: {
+					leiId: leiId.length ? { in: leiId } : undefined,
+					lei: {
+						materiaId: materiaId.length ? { in: materiaId } : undefined,
+						combosLeis: { some: { comboId } },
+					},
+				},
+			},
+		},
+	})
+
+	const [materias, leis, titulos, capitulos, artigos] = await Promise.all([
+		materiasPromise,
+		leisPromise,
+		titulosPromise,
+		capitulosPromise,
+		artigosPromise,
+	])
 
 	const flashcards = await buscarFlashcards({
 		comboId,
 		userId,
 		tipo: type,
 		page,
+		artigoId,
+		capituloId,
+		leiId,
+		materiaId,
+		tituloId,
+		onlyFavorites,
 	})
 	return json({
 		flashcards: flashcards.map(f => ({
@@ -77,59 +155,61 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 			lei: f.lei,
 			favorite: f.favorite,
 		})),
+		materias,
+		leis,
+		titulos,
+		capitulos,
+		artigos,
 	})
 }
 
 let isInitialRequest = true
-const cachedKeyFlashcards = 'flashcards'
+const cachedKeyData = 'cached-data'
 const cachedKeypage = 'keyPage'
 export async function clientLoader({
 	serverLoader,
 	request,
 	params,
 }: ClientLoaderFunctionArgs) {
-	console.log('clientLoader')
 	const type = params.type
 	const comboId = params.comboId
 
 	const url = new URL(request.url)
 
-	const cachedPageKey = `${type}${comboId}${url.search}`
+	const cachedPage = `${type}${comboId}${url.search}`
 	if (isInitialRequest) {
 		isInitialRequest = false
-		await localForage.setItem(cachedKeypage, cachedPageKey)
+		await localForage.setItem(cachedKeypage, cachedPage)
 		const serverData = await serverLoader<typeof loader>()
-		await localForage.setItem(cachedKeyFlashcards, serverData.flashcards)
+		await localForage.setItem(cachedKeyData, serverData)
 		return serverData
 	}
 	const hrefCached = await localForage.getItem(cachedKeypage)
 
-	if (cachedPageKey !== hrefCached) {
+	if (cachedPage !== hrefCached) {
 		await localForage.clear()
-		await localForage.setItem(cachedKeypage, cachedPageKey)
+		await localForage.setItem(cachedKeypage, cachedPage)
 		const serverData = await serverLoader<typeof loader>()
-		await localForage.setItem(cachedKeyFlashcards, serverData.flashcards)
+		await localForage.setItem(cachedKeyData, serverData)
 		return serverData
 	}
 
-	const flashcardsCached = await localForage.getItem(cachedKeyFlashcards)
+	const dataCached = (await localForage.getItem(cachedKeyData)) as any
 	if (
-		flashcardsCached &&
-		Array.isArray(flashcardsCached) &&
-		flashcardsCached.length > 0
+		dataCached &&
+		Array.isArray(dataCached.flashcards) &&
+		dataCached.flashcards.length > 0
 	) {
-		console.log({ flashcardsCached })
-		return { flashcards: flashcardsCached }
+		return dataCached
 	}
 
 	const serverData = await serverLoader<typeof loader>()
-	await localForage.setItem(cachedKeyFlashcards, serverData.flashcards)
+	await localForage.setItem(cachedKeyData, serverData)
 	return serverData
 }
 clientLoader.hydrate = true
 
 export async function action({ request }: ActionFunctionArgs) {
-	console.log('server action')
 	const userId = await requireUserId(request)
 	const form = await request.formData()
 
@@ -182,11 +262,25 @@ export async function clientAction({
 
 	if (values.intent === 'answer') {
 		const { id } = values
-		const cachedFlashcards = await localForage.getItem(cachedKeyFlashcards)
-		if (cachedFlashcards && Array.isArray(cachedFlashcards)) {
-			const index = cachedFlashcards.findIndex((f: any) => f.id === id)
-			cachedFlashcards.splice(index, 1)
-			await localForage.setItem(cachedKeyFlashcards, cachedFlashcards)
+		const cachedData = (await localForage.getItem(cachedKeyData)) as any
+		if (cachedData && Array.isArray(cachedData.flashcards)) {
+			const index = cachedData.flashcards.findIndex((f: any) => f.id === id)
+			cachedData.flashcards.splice(index, 1)
+			await localForage.setItem(cachedKeyData, cachedData)
+		}
+		return serverAction()
+	}
+
+	if (values.intent === 'favoritar') {
+		const { id, favorite } = values
+		const cachedData = (await localForage.getItem(cachedKeyData)) as any
+		if (cachedData && Array.isArray(cachedData.flashcards)) {
+			const index = cachedData.flashcards.findIndex((f: any) => f.id === id)
+			cachedData.flashcards[index] = {
+				...(cachedData.flashcards[index] as any),
+				favorite,
+			}
+			await localForage.setItem(cachedKeyData, cachedData)
 		}
 	}
 
@@ -204,6 +298,7 @@ export default function Flashcards() {
 		<>
 			<Outlet />
 			<div className="flex w-full flex-col items-center">
+				<SheetFilterFlashcards title="Filtros" />
 				<Deck key={`${type}${comboId}${search.toString()}`} />
 				<div className="mt-5 flex w-full max-w-96 justify-around rounded-md shadow-md">
 					<Form method="post">
