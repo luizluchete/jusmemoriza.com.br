@@ -3,7 +3,8 @@ import { cleanupDb } from '#tests/db-utils.ts'
 
 // const databaseFile = `./tests/prisma/data.${process.env.VITEST_POOL_ID || 0}.db`
 // const databasePath = path.join(process.cwd(), databaseFile)
-// process.env.DATABASE_URL = `file:${databasePath}`
+process.env.DATABASE_URL =
+	'postgresql://postgres:postgres@localhost:5499/vitest?schema=public'
 
 // beforeAll(async () => {
 // 	await fsExtra.copyFile(BASE_DATABASE_PATH, databasePath)

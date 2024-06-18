@@ -200,7 +200,6 @@ function BarChartEstatisticas() {
 					data.total > 0 ? (data.corretas / data.total) * 100 : 0,
 				),
 				borderColor: (color: any) => {
-					if (!color.index) return 'rgb(46, 204, 113)'
 					const colors =
 						results[color.index].corretas / results[color.index].total > 0.5
 							? 'rgb(46, 204, 113)'
@@ -208,8 +207,6 @@ function BarChartEstatisticas() {
 					return colors
 				},
 				backgroundColor: (color: any) => {
-					if (!color.index) return 'rgb(46, 204, 113)'
-
 					const colors =
 						results[color.index].corretas / results[color.index].total > 0.5
 							? 'rgba(46, 204, 113, 0.5)'
@@ -219,7 +216,12 @@ function BarChartEstatisticas() {
 			},
 		],
 	}
-	return <Bar data={data} options={options} plugins={[innerBarTextPlugin]} />
+
+	return results.length > 0 ? (
+		<Bar data={data} options={options} plugins={[innerBarTextPlugin]} />
+	) : (
+		<div className="flex h-full items-center justify-center">Nenhum dado</div>
+	)
 }
 
 function PieCharEstatisticas() {
@@ -244,11 +246,13 @@ function PieCharEstatisticas() {
 			},
 		],
 	}
-	return (
+	return total > 0 ? (
 		<Doughnut
 			id="pie-chart"
 			data={data}
 			options={{ responsive: true, maintainAspectRatio: false }}
 		/>
+	) : (
+		<div className="flex h-full items-center justify-center">Nenhum Dado</div>
 	)
 }

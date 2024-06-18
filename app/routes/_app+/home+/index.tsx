@@ -99,7 +99,7 @@ export default function () {
 							</Link>
 						</li>
 						<li>
-							<Link to="/lei-seca">
+							<Link to="/lists">
 								<div className="flex w-full max-w-xs cursor-pointer flex-col items-start rounded-3xl bg-primary p-4 py-6 shadow-sm shadow-primary">
 									<div className="flex w-full  justify-between">
 										<img
@@ -116,7 +116,7 @@ export default function () {
 							</Link>
 						</li>
 						<li>
-							<Link to="/lei-seca">
+							<Link to="/statistics">
 								<div className="flex w-full max-w-xs cursor-pointer flex-col items-start rounded-3xl bg-primary p-4 py-6 shadow-sm shadow-primary">
 									<div className="flex w-full  justify-between">
 										<img
@@ -216,7 +216,7 @@ function CardMaterias() {
 				<h3 className="mb-5 text-center text-base font-bold text-[#4F4F4F]">
 					Matérias mais respondidas
 				</h3>
-				<div className="flex justify-center px-5">
+				<div className="flex flex-col justify-center px-5">
 					{materias.length === 0 ? (
 						<div className="text-center">Nenhum dado encontrado</div>
 					) : null}

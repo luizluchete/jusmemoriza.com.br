@@ -1,8 +1,7 @@
-import { type LoaderFunctionArgs } from '@remix-run/node'
-import { Form, json, useLoaderData } from '@remix-run/react'
+import { Link, json, useLoaderData } from '@remix-run/react'
 import { prisma } from '#app/utils/db.server.js'
 
-export async function loader({}: LoaderFunctionArgs) {
+export async function loader() {
 	const combos = await prisma.combo.findMany({
 		where: {
 			status: true,
@@ -52,6 +51,7 @@ export async function loader({}: LoaderFunctionArgs) {
 
 export default function Index() {
 	const { combos } = useLoaderData<typeof loader>()
+
 	return (
 		<div className="container">
 			<div>
@@ -76,9 +76,8 @@ export default function Index() {
 				<ul className="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
 					{combos.map(combo => (
 						<li key={combo.id}>
-							<Form
-								method="post"
-								action={`${combo.id}/combo`}
+							<Link
+								to={`${combo.id}/type/initial`}
 								className="col-span-1 flex h-36 rounded-md shadow-sm hover:cursor-pointer hover:brightness-95"
 							>
 								<button value="load" name="intent" type="submit">
@@ -98,7 +97,7 @@ export default function Index() {
 										</div>
 									</div>
 								</button>
-							</Form>
+							</Link>
 						</li>
 					))}
 				</ul>

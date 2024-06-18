@@ -137,7 +137,7 @@ export default function SignupRoute() {
 				<Spacer size="xs" />
 				<Form
 					method="POST"
-					className="mx-auto min-w-full max-w-sm sm:min-w-[368px]"
+					className="mx-auto min-w-full max-w-sm space-y-1 sm:min-w-[368px]"
 					{...getFormProps(form)}
 				>
 					<HoneypotInputs />

@@ -3,14 +3,15 @@ import { prisma } from '#app/utils/db.server'
 
 type Input = {
 	tipo?: string
+	page?: number
 	userId: string
 	comboId: string
 	onlyFavorites?: boolean
-  materiaId?: string[]
-  leiId?: string[]
-  tituloId?: string[]
-  capituloId?: string[]
-  artigoId?: string[] 
+	materiaId?: string[]
+	leiId?: string[]
+	tituloId?: string[]
+	capituloId?: string[]
+	artigoId?: string[]
 }
 
 export async function countFlashcards({ comboId, userId }: Input) {
@@ -69,21 +70,49 @@ export async function countFlashcards({ comboId, userId }: Input) {
 	}
 }
 
-export async function buscarFlashcards({ comboId, userId, tipo,materiaId,artigoId,capituloId,leiId,onlyFavorites,tituloId }: Input) {
+export async function buscarFlashcards({
+	comboId,
+	userId,
+	tipo,
+	materiaId,
+	artigoId,
+	capituloId,
+	leiId,
+	onlyFavorites,
+	tituloId,
+	page = 1,
+}: Input) {
 	let tipoQuery = tipo
-	if (tipo !== 'sabia' && tipo !== 'duvida' && tipo !== 'nao_sabia') {
-		tipoQuery = 'default'
+	if (tipo !== 'know' && tipo !== 'doubt' && tipo !== 'noknow') {
+		tipoQuery = 'initial'
 	}
 
-  const whereMateria = materiaId ? Prisma.sql`and materias.id in (${Prisma.join(materiaId)})` : Prisma.empty
-  const whereLei = leiId ? Prisma.sql`and leis.id in (${Prisma.join(leiId)})` : Prisma.empty
-  const whereTitulo = tituloId ? Prisma.sql`and titulos.id in (${Prisma.join(tituloId)})` : Prisma.empty
-  const whereCapitulo = capituloId ? Prisma.sql`and capitulos.id in (${Prisma.join(capituloId)})` : Prisma.empty
-  const whereArtigo = artigoId ? Prisma.sql`and artigos.id in (${Prisma.join(artigoId)})` : Prisma.empty
+	if (tipo === 'know') {
+		tipoQuery = 'sabia'
+	} else if (tipo === 'doubt') {
+		tipoQuery = 'duvida'
+	} else if (tipo === 'noknow') {
+		tipoQuery = 'nao_sabia'
+	}
 
+	const whereMateria = materiaId
+		? Prisma.sql`and materias.id in (${Prisma.join(materiaId)})`
+		: Prisma.empty
+	const whereLei = leiId
+		? Prisma.sql`and leis.id in (${Prisma.join(leiId)})`
+		: Prisma.empty
+	const whereTitulo = tituloId
+		? Prisma.sql`and titulos.id in (${Prisma.join(tituloId)})`
+		: Prisma.empty
+	const whereCapitulo = capituloId
+		? Prisma.sql`and capitulos.id in (${Prisma.join(capituloId)})`
+		: Prisma.empty
+	const whereArtigo = artigoId
+		? Prisma.sql`and artigos.id in (${Prisma.join(artigoId)})`
+		: Prisma.empty
 
-	if (tipoQuery === 'default') {
-		const query =  await prisma.$queryRaw<any[]>`
+	if (tipoQuery === 'initial') {
+		const query = await prisma.$queryRaw<any[]>`
     select f.id,
            f.frente,
            f.verso,
@@ -118,8 +147,8 @@ export async function buscarFlashcards({ comboId, userId, tipo,materiaId,artigoI
                         and fua."userId" = ${userId}
                         order by fua."createdAt" desc
                        limit 1),'') <> 'sabia' 
+      order by random() limit 10                 
                        `
-
 
 		return query.map(flashcard => ({
 			id: String(flashcard.id),
@@ -160,7 +189,8 @@ select f.id,
                         where fua."flashcardId" = f.id
                         and fua."userId" = ${userId}
                         order by fua."createdAt" desc
-                       limit 1) = ${tipoQuery}           
+                       limit 1) = ${tipoQuery}    
+        offset ${(page - 1) * 10} limit 10
     `
 	return query.map(flashcard => ({
 		id: String(flashcard.id),

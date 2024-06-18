@@ -115,7 +115,7 @@ export default function LoginPage() {
 				</div>
 			</div>
 			<Form method="post" {...getFormProps(form)}>
-				<div className="">
+				<div className="space-y-2">
 					<HoneypotInputs />
 					<Field
 						labelProps={{ children: 'Email' }}

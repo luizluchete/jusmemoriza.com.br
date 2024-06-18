@@ -144,7 +144,7 @@ export default function ComboId() {
 				<Spacer size={'4xs'} />
 				<Separator />
 				<Spacer size={'4xs'} />
-				<ul className="border-1 max-h-96 space-y-2 divide-y-2 overflow-y-scroll bg-gray-100 p-5 shadow-md">
+				<ul className="border-1 max-h-96 space-y-2 divide-y-2 overflow-y-auto bg-gray-100 p-5 shadow-md">
 					{combo.leis.map(lei => (
 						<ItemListLei key={lei.id} lei={lei} />
 					))}

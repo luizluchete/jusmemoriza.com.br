@@ -745,6 +745,9 @@ function CardQuiz({
 		}
 		return 'border border-primary text-primary  hover:bg-purple-50'
 	}
+
+	const [searchParams] = useSearchParams()
+	const page = Number(searchParams.get('page')) || 1
 	return (
 		<>
 			<li className="flex w-full flex-col space-y-3 rounded-lg border border-primary bg-white px-2 py-2 shadow-lg">
@@ -752,7 +755,9 @@ function CardQuiz({
 					<div>
 						<div className="mb-5 flex items-center">
 							<span className="mr-5 text-xl font-bold text-primary">
-								{(index + 1).toString().padStart(2, '0')}
+								{((page - 1) * PAGE_SIZE + index + 1)
+									.toFixed(0)
+									.padStart(2, '0')}
 							</span>
 
 							<div className="flex space-x-5  text-xl font-medium text-primary">

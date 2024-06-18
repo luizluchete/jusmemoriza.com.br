@@ -1,0 +1,9 @@
+.cards {
+    animation: cardsIn 1s forwards;
+}
+
+@keyframes cardsIn {
+    from {
+        transform: translateY(-1000px);
+    }
+}

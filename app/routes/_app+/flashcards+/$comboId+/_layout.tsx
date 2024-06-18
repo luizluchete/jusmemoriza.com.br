@@ -1,6 +1,6 @@
 import { invariantResponse } from '@epic-web/invariant'
 import { type LoaderFunctionArgs, json } from '@remix-run/node'
-import { Form, Outlet, useLoaderData } from '@remix-run/react'
+import { Link, Outlet, useLoaderData } from '@remix-run/react'
 import { Icon } from '#app/components/ui/icon'
 import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
@@ -42,7 +42,6 @@ export default function Layout() {
 	let { total, combo, user, duvida, naoSabia, sabia, favorite } =
 		useLoaderData<typeof loader>()
 	let rating = (sabia / total) * 100
-
 	return (
 		<div className="flex justify-around">
 			<div className="hidden h-min space-y-5 rounded-md bg-white p-5 shadow-md xl:block">
@@ -60,7 +59,9 @@ export default function Layout() {
 					<span className="text-gray-400">{favorite}</span>
 				</div>
 			</div>
-			<Outlet />
+			<div className="flex-1">
+				<Outlet />
+			</div>
 			<div className="flex flex-col">
 				<div className="hidden flex-col items-center gap-y-3 rounded-2xl p-10 shadow-md xl:flex">
 					<div className="-mt-10">
@@ -80,10 +81,14 @@ export default function Layout() {
 						{Number(rating) ? rating.toFixed(0) : '0'}% concluído
 					</span>
 				</div>
-				<Form action="action" method="post">
-					<input type="hidden" value="load" name="intent" readOnly />
-					<div className="hidden flex-col xl:flex">
-						<button className="w-full" name="tipo" value="sabia">
+				<div className="hidden flex-col xl:flex">
+					<Link to={`type/know`}>
+						<button
+							id="card-sabia"
+							className="w-full"
+							name="tipo"
+							value="sabia"
+						>
 							<div className="mt-5 flex h-20 cursor-pointer items-center justify-around rounded-2xl bg-white shadow-xl hover:brightness-90">
 								<div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#DAEBD1] font-bold text-[#007012]">
 									{sabia}
@@ -97,7 +102,10 @@ export default function Layout() {
 								/>
 							</div>
 						</button>
+					</Link>
+					<Link to={`type/noknow`}>
 						<button
+							id="card-nao-sabia"
 							className="w-full"
 							type="submit"
 							name="tipo"
@@ -115,8 +123,15 @@ export default function Layout() {
 								</div>
 							</div>
 						</button>
-
-						<button className="w-full" type="submit" name="tipo" value="duvida">
+					</Link>
+					<Link to={`type/doubt`}>
+						<button
+							id="card-duvida"
+							className="w-full"
+							type="submit"
+							name="tipo"
+							value="duvida"
+						>
 							<div className="mt-2 flex h-20 cursor-pointer items-center justify-around rounded-2xl bg-white shadow-xl hover:brightness-90">
 								<div className="flex h-11 w-11 items-center justify-center rounded-full bg-purple-500/10 font-bold text-primary">
 									{duvida}
@@ -132,8 +147,8 @@ export default function Layout() {
 								</div>
 							</div>
 						</button>
-					</div>
-				</Form>
+					</Link>
+				</div>
 			</div>
 		</div>
 	)
