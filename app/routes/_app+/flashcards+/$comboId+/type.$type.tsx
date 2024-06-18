@@ -322,7 +322,7 @@ export default function Flashcards() {
 							</div>
 						</button>
 					</Form>
-					<Link to={`lists/${current?.id}${search.toString()}`}>
+					<Link to={`lists/${current?.id}?${search.toString()}`}>
 						<div className="flex flex-col items-center text-primary hover:brightness-150">
 							<Icon name="game-card" className="h-6 w-6" />
 							<span>Listas</span>

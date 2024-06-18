@@ -9,6 +9,7 @@ import {
 import { type Tick, type Plugin } from 'chart.js'
 import { Bar, Doughnut } from 'react-chartjs-2'
 import { ClientOnly } from 'remix-utils/client-only'
+import flashcardsIcon from '#app/components/ui/img/flashcards_icon.png'
 import leiSecaIcon from '#app/components/ui/img/lei_seca_icon.png'
 import {
 	Select,
@@ -25,6 +26,7 @@ import {
 	buscaTotalizadorQuizzes,
 	buscaTotalizadorQuizzesPorMateria,
 	quantidadeTotalRespondidaPorMateria,
+	statisticsFlashcards,
 } from './statistics.server'
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -38,20 +40,46 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		orderBy: { name: 'asc' },
 	})
 
-	const total = await quantidadeTotalRespondidaPorMateria(userId, materiaId)
-	const totalQuizzes = await buscaTotalizadorQuizzes(userId)
-	const results = await buscaTotalizadorQuizzesPorMateria(userId, materiaId)
+	const [total, totalQuizzes, results, statusFlashcards] = await Promise.all([
+		quantidadeTotalRespondidaPorMateria(userId, materiaId),
+		buscaTotalizadorQuizzes(userId),
+		buscaTotalizadorQuizzesPorMateria(userId, materiaId),
+		statisticsFlashcards(userId),
+	])
 
-	return json({ materias, totalQuizzes, total, results })
+	return json({ materias, totalQuizzes, total, results, statusFlashcards })
 }
 export default function Statistics() {
-	const { totalQuizzes, materias } = useLoaderData<typeof loader>()
+	const { totalQuizzes, materias, statusFlashcards } =
+		useLoaderData<typeof loader>()
 	const { corretas, erradas, total } = totalQuizzes
 	const submit = useSubmit()
 	const [searchParams] = useSearchParams()
 
 	return (
 		<div className="flex flex-col space-y-5">
+			<div className="flex justify-center">
+				<Form onChange={e => submit(e.currentTarget)}>
+					<Select
+						name="materiaId"
+						defaultValue={searchParams.get('materiaId') || undefined}
+					>
+						<SelectTrigger className="w-[240px]">
+							<SelectValue placeholder="Selecione uma matéria" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectGroup>
+								<SelectLabel>Matérias</SelectLabel>
+								{materias.map(materia => (
+									<SelectItem key={materia.id} value={materia.id}>
+										{materia.name}
+									</SelectItem>
+								))}
+							</SelectGroup>
+						</SelectContent>
+					</Select>
+				</Form>
+			</div>
 			<div className="flex flex-col justify-between md:flex-row md:space-x-5">
 				<div
 					id="questoes-adaptadas"
@@ -90,28 +118,6 @@ export default function Statistics() {
 				</div>
 			</div>
 
-			<div className="flex justify-center">
-				<Form onChange={e => submit(e.currentTarget)}>
-					<Select
-						name="materiaId"
-						defaultValue={searchParams.get('materiaId') || undefined}
-					>
-						<SelectTrigger className="w-[240px]">
-							<SelectValue placeholder="Selecione uma matéria" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectGroup>
-								<SelectLabel>Matérias</SelectLabel>
-								{materias.map(materia => (
-									<SelectItem key={materia.id} value={materia.id}>
-										{materia.name}
-									</SelectItem>
-								))}
-							</SelectGroup>
-						</SelectContent>
-					</Select>
-				</Form>
-			</div>
 			<ClientOnly key={searchParams.toString()}>
 				{() => (
 					<div className="flex flex-col space-y-5 lg:flex-row lg:space-x-5 lg:space-y-0">
@@ -124,6 +130,51 @@ export default function Statistics() {
 					</div>
 				)}
 			</ClientOnly>
+			<div className="flex flex-col justify-between md:flex-row md:space-x-5">
+				<div
+					id="questoes-adaptadas"
+					className="max-h-fit rounded-lg border bg-white p-5 shadow-md"
+				>
+					<img src={flashcardsIcon} alt="flashcard-icon" />
+					<span className="font-semibold">Flashcards</span>
+				</div>
+				<div className="flex-1">
+					<dl className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-4">
+						<div className="overflow-hidden rounded-lg border bg-white px-4 py-5 shadow sm:p-6">
+							<dt className="truncate text-sm font-medium text-gray-500">
+								Flashcard únicos respondidos
+							</dt>
+							<dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
+								{statusFlashcards.total}
+							</dd>
+						</div>
+						<div className="overflow-hidden rounded-lg border bg-white px-4 py-5 shadow sm:p-6">
+							<dt className="truncate text-sm font-medium text-green-700">
+								Acertos
+							</dt>
+							<dd className="mt-1 text-3xl font-semibold tracking-tight text-green-700">
+								{statusFlashcards.sabia}
+							</dd>
+						</div>
+						<div className="overflow-hidden rounded-lg border bg-white px-4 py-5 shadow sm:p-6">
+							<dt className="truncate text-sm font-medium text-red-700">
+								Erros
+							</dt>
+							<dd className="mt-1 text-3xl font-semibold tracking-tight text-red-700">
+								{statusFlashcards.naoSabia}
+							</dd>
+						</div>
+						<div className="overflow-hidden rounded-lg border bg-white px-4 py-5 shadow sm:p-6">
+							<dt className="truncate text-sm font-medium text-purple-700">
+								Dúvidas
+							</dt>
+							<dd className="mt-1 text-3xl font-semibold tracking-tight text-purple-700">
+								{statusFlashcards.duvida}
+							</dd>
+						</div>
+					</dl>
+				</div>
+			</div>
 		</div>
 	)
 }

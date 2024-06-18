@@ -73,8 +73,7 @@ export default function () {
 										<img
 											src={leiSecaIcon}
 											alt={'lei-seca-icon'}
-											height="48"
-											width="48"
+											className="h-12 w-12 object-cover"
 										/>
 									</div>
 									<span className="text-lg font-bold text-white">Lei seca</span>
@@ -88,8 +87,7 @@ export default function () {
 										<img
 											src={flashcardsIcon}
 											alt={'flashcards-icon'}
-											height="48"
-											width="48"
+											className="h-12 w-12 object-cover"
 										/>
 									</div>
 									<span className="text-lg font-bold text-white">
@@ -105,8 +103,7 @@ export default function () {
 										<img
 											src={minhasListasIcon}
 											alt={'listas-icon'}
-											height="48"
-											width="48"
+											className="h-12 w-12 object-cover"
 										/>
 									</div>
 									<span className="text-lg font-bold text-white">
@@ -122,8 +119,7 @@ export default function () {
 										<img
 											src={estatisticasIcon}
 											alt={'estatisticas-icon'}
-											height="48"
-											width="48"
+											className="h-12 w-12 object-cover"
 										/>
 									</div>
 									<span className="text-lg font-bold text-white">
@@ -138,9 +134,7 @@ export default function () {
 							<div className="flex w-full flex-col items-center justify-center">
 								<div className="-top-10 flex h-32 w-32 items-center justify-center rounded-full border-2 border-white">
 									<img
-										className="absolute h-32 w-32 rounded-full"
-										height={120}
-										width={120}
+										className="absolute h-32 w-32 rounded-full object-cover"
 										src={user ? getUserImgSrc(user.image?.id) : ''}
 										alt="user-avatar"
 									/>

@@ -99,3 +99,66 @@ export async function quantidadeTotalRespondidaPorMateria(
 	])
 	return { total, corretas, erradas: total - corretas }
 }
+
+export async function statisticsFlashcards(userId: string) {
+	const query = await prisma.$queryRaw<
+		{ total: number; sabia: number; duvida: number; naoSabia: number }[]
+	>`
+	SELECT count(flashcards.id) total,
+       sum(CASE
+                      (SELECT fua.answer
+                       FROM flashcard_user_answers fua
+                       WHERE fua."flashcardId" = flashcards.id
+                         AND fua."userId" = flashcards."userId"
+                       ORDER BY fua."createdAt" DESC
+                       LIMIT 1)
+               WHEN 'sabia' THEN 1
+               ELSE 0
+           END) sabia,
+       sum(CASE
+                      (SELECT fua.answer
+                       FROM flashcard_user_answers fua
+                       WHERE fua."flashcardId" = flashcards.id
+                         AND fua."userId" = flashcards."userId"
+                       ORDER BY fua."createdAt" DESC
+                       LIMIT 1)
+               WHEN 'duvida' THEN 1
+               ELSE 0
+           END) duvida,
+       sum(CASE
+                      (SELECT fua.answer
+                       FROM flashcard_user_answers fua
+                       WHERE fua."flashcardId" = flashcards.id
+                         AND fua."userId" = flashcards."userId"
+                       ORDER BY fua."createdAt" DESC
+                       LIMIT 1)
+               WHEN 'nao_sabia' THEN 1
+               ELSE 0
+           END) "naoSabia"
+FROM
+  (SELECT fua."flashcardId" AS id,
+          fua."userId"
+   FROM flashcard_user_answers fua
+   WHERE fua."userId" = ${userId}
+   GROUP BY fua."flashcardId",
+            fua."userId") flashcards
+	
+	
+	`
+
+	if (query.length === 0) {
+		return {
+			total: 0,
+			sabia: 0,
+			duvida: 0,
+			naoSabia: 0,
+		}
+	}
+
+	return {
+		total: Number(query[0].total),
+		sabia: Number(query[0].sabia),
+		duvida: Number(query[0].duvida),
+		naoSabia: Number(query[0].naoSabia),
+	}
+}
