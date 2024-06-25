@@ -331,6 +331,7 @@ export default function Layout() {
 					Papa.parse(file, {
 						skipEmptyLines: true,
 						step(value, parser) {
+							console.log({ value })
 							line++
 							//validar com zod
 							const result = csvLineQuizSchema.safeParse(value.data)

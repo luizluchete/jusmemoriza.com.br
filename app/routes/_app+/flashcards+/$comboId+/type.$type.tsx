@@ -9,7 +9,6 @@ import {
 import {
 	useLoaderData,
 	useParams,
-	Form,
 	Link,
 	useSearchParams,
 	type ClientLoaderFunctionArgs,
@@ -17,6 +16,7 @@ import {
 	useSubmit,
 	Outlet,
 	useNavigation,
+	useFetcher,
 } from '@remix-run/react'
 import localForage from 'localforage'
 import { useState } from 'react'
@@ -30,10 +30,10 @@ import {
 	DialogDescription,
 } from '#app/components/ui/dialog'
 import { Icon } from '#app/components/ui/icon'
-import logoBranco from '#app/components/ui/img/logo_jusmemoriza_branco.png'
+import frenteFlashcard from '#app/components/ui/img/frente-flashcard.jpeg'
+import versoFlashcard from '#app/components/ui/img/verso-flashcard.jpeg'
 import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
-import { cn } from '#app/utils/misc'
 import { SheetFilterFlashcards } from './__filtro-flashcards'
 import { buscarFlashcards } from './flashcards.server'
 
@@ -288,69 +288,13 @@ export async function clientAction({
 
 export default function Flashcards() {
 	const { comboId, type } = useParams()
-	const { flashcards } = useLoaderData<typeof loader>()
-	let current = flashcards.at(-1)
-	let flashcardFavorite = current?.favorite
 	const [search] = useSearchParams()
-
 	return (
 		<>
 			<Outlet />
 			<div className="flex w-full flex-col items-center">
 				<SheetFilterFlashcards title="Filtros" />
 				<Deck key={`${type}${comboId}${search.toString()}`} />
-				<div className="mt-5 flex w-full max-w-96 justify-around rounded-md shadow-md">
-					<Form method="post">
-						<input type="hidden" value={current?.id} name="id" readOnly />
-						<input
-							type="hidden"
-							name="favorite"
-							value={flashcardFavorite ? '' : 'yes'}
-							readOnly
-						/>
-						<button type="submit" name="intent" value="favoritar">
-							<div className="flex flex-col items-center text-primary hover:text-red-500">
-								{flashcardFavorite ? (
-									<Icon name="heart" className="h-6 w-6 text-red-500" />
-								) : (
-									<Icon name="heart-outline" className="h-6 w-6" />
-								)}
-								<span className={`${flashcardFavorite ? 'text-red-500' : ''}`}>
-									Favoritar
-								</span>
-							</div>
-						</button>
-					</Form>
-					<Link to={`lists/${current?.id}?${search.toString()}`}>
-						<div className="flex flex-col items-center text-primary hover:brightness-150">
-							<Icon name="game-card" className="h-6 w-6" />
-							<span>Listas</span>
-						</div>
-					</Link>
-					{current?.fundamento ? (
-						<Dialog>
-							<DialogTrigger>
-								<div className="flex cursor-pointer flex-col items-center text-primary hover:brightness-150">
-									<Icon name="books" className="h-6 w-6" />
-									<span>Fundamento</span>
-								</div>
-							</DialogTrigger>
-							<DialogContent>
-								<DialogHeader>
-									<DialogTitle>Fundamento</DialogTitle>
-									<DialogDescription>
-										<div
-											className="overflow-auto whitespace-normal text-justify"
-											dangerouslySetInnerHTML={{
-												__html: current.fundamento || '',
-											}}
-										/>
-									</DialogDescription>
-								</DialogHeader>
-							</DialogContent>
-						</Dialog>
-					) : null}
-				</div>
 			</div>
 		</>
 	)
@@ -362,11 +306,10 @@ function Deck() {
 	const { type } = useParams()
 	const [searchParams, setSearchParams] = useSearchParams()
 	const [springs, api] = useSprings(flashcards.length, i => ({
-		from: { x: 0, rot: 0, scale: 1, y: -1000, opacity: 1 },
+		from: { x: 0, scale: 1, y: -1000, opacity: 1 },
 		scale: 1,
 		x: 0,
 		y: i < 4 ? i * -4 : -4,
-		rot: -1 + Math.random() * 5,
 		delay: i < 4 ? i * 100 : 400,
 		display: 'block',
 		config: { mass: 10, tension: 1000, friction: 300, duration: 600 },
@@ -470,7 +413,7 @@ function Deck() {
 			{flashcards.length === 0 ? (
 				<MessageNoFlashcards />
 			) : (
-				springs.map(({ scale, x, y, rot }, index) => (
+				springs.map(({ scale, x, y }, index) => (
 					<animated.div
 						id="cards"
 						key={flashcards[index].id}
@@ -479,7 +422,6 @@ function Deck() {
 							x,
 							y,
 							scale,
-							transform: rot.to(r => `rotate(${r}deg)`),
 						}}
 					>
 						<Flashcard
@@ -503,8 +445,10 @@ function Flashcard({
 		frente: string
 		verso: string
 		fundamento?: string | null
+		favorite: boolean
 		materia: {
 			name: string
+			color?: string | null
 		}
 		lei: { name: string }
 	}
@@ -515,136 +459,190 @@ function Flashcard({
 		config: { mass: 5, tension: 500, friction: 80 },
 	})
 
-	const { frente, verso, id, materia, lei } = flashcard
-	const { type } = useParams()
+	let fetcher = useFetcher()
+	let [search] = useSearchParams()
 	const navigation = useNavigation()
 	let isPeding =
 		navigation.state === 'submitting' || navigation.state === 'loading'
-	function getColorBackground() {
-		if (type === 'know') {
-			return 'bg-green-900'
-		}
-		if (type === 'noknow') {
-			return 'bg-red-900'
-		}
-		if (type === 'doubt') {
-			return 'bg-purple-900'
-		}
-		return 'bg-primary'
-	}
-
 	return (
-		<div className="relative flex h-[600px] w-[440px]">
+		<div className="relative h-[600px] w-[440px]">
 			<animated.div
-				className={cn(
-					'absolute flex h-full w-full flex-col space-y-3 rounded-lg border border-black p-3 backface-hidden',
-					getColorBackground(),
-				)}
 				style={{ transform }}
+				className="absolute flex h-full w-full rounded-md border shadow-md backface-hidden"
+				onClick={() => setFlipped(state => !state)}
 			>
-				<div className="flex items-center">
-					<h2 className="flex-1 text-lg font-bold text-gray-300">
-						{materia.name}
-					</h2>
-
-					<img
-						src={logoBranco}
-						alt="logo JusMemoriza"
-						className="h-10 object-cover"
-					/>
-				</div>
+				<img
+					src={frenteFlashcard}
+					alt="frente-card"
+					className="absolute z-0 h-full w-full rounded-md object-cover"
+				/>
 				<div
-					id="texto-frente"
-					className="flex-1 whitespace-normal rounded-lg bg-white px-3 pt-5"
+					className="z-10 flex h-full w-full flex-col justify-between rounded-lg border-t-8"
+					style={{ borderColor: flashcard.materia.color ?? 'gray' }}
 				>
-					<h3 className="text-xl font-bold">{lei.name}</h3>
-
-					<div
-						className="max-h-72 overflow-auto text-justify text-xl"
-						dangerouslySetInnerHTML={{ __html: frente }}
-					/>
-				</div>
-				<div className="flex w-full justify-center">
-					<button onClick={() => setFlipped(prev => !prev)}>
-						<div className="flex items-center gap-x-3 rounded-md bg-gray-300 px-6 py-3 text-base font-medium text-black shadow-sm hover:brightness-90">
-							<Icon name="question-mark-circled" className="h-7 w-7" />
-							<span>Ver Resposta</span>
+					<div className="mt-20 flex w-full flex-col items-center justify-center space-y-5">
+						<div
+							className="flex h-24 w-24 items-center justify-center rounded-full p-4 shadow-xl"
+							style={{ backgroundColor: flashcard.materia.color ?? 'gray' }}
+						>
+							<Icon
+								name="question"
+								className="h-full w-full rounded-full object-cover text-white"
+							/>
 						</div>
-					</button>
+						<h1 className="text-3xl font-bold">{flashcard.materia.name}</h1>
+						<div
+							className="flex-1 overflow-auto px-5 text-justify text-xl text-gray-600"
+							dangerouslySetInnerHTML={{ __html: flashcard.frente }}
+						/>
+					</div>
+					<div className="flex w-full justify-center">
+						<h2 className="mb-5 text-2xl font-semibold text-gray-600">
+							{flashcard.lei.name}
+						</h2>
+					</div>
 				</div>
 			</animated.div>
 
 			<animated.div
-				className="absolute flex h-full w-full flex-col rounded-lg border border-black bg-gray-200 p-3 backface-hidden"
 				style={{ transform, rotateY: '180deg' }}
+				className="absolute flex h-full w-full rounded-md border shadow-md backface-hidden"
+				onClick={() => setFlipped(state => !state)}
 			>
-				<div className="flex pb-3">
-					<div className="flex h-full w-full items-center justify-center">
-						<button
-							onClick={() => setFlipped(state => !state)}
-							className="inline-flex items-center rounded-md border bg-gray-300 px-6 py-3 text-base font-medium text-black shadow-sm hover:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-						>
-							<Icon
-								name="question-mark-circled"
-								className="-ml-1 mr-3 h-5 w-5"
-								aria-hidden="true"
+				<img
+					src={versoFlashcard}
+					alt="verso-card"
+					className="absolute z-0 h-full w-full rounded-md object-cover"
+				/>
+				<div
+					className="z-10 flex h-full w-full flex-col justify-between rounded-lg border-t-8"
+					style={{ borderColor: flashcard.materia.color ?? 'gray' }}
+				>
+					<div className="flex w-full justify-end space-x-5 p-2">
+						<fetcher.Form method="post">
+							<input type="hidden" value={flashcard.id} name="id" readOnly />
+							<input
+								type="hidden"
+								name="favorite"
+								value={flashcard.favorite ? '' : 'yes'}
+								readOnly
 							/>
-							Ver pergunta
-						</button>
-					</div>
-				</div>
-				<div className="flex-1 whitespace-normal rounded-lg bg-white px-3 pt-2">
-					<div
-						className="h-full overflow-auto text-justify text-xl"
-						dangerouslySetInnerHTML={{ __html: verso }}
-					/>
-				</div>
-				<div>
-					<input type="hidden" name="id" readOnly value={id} />
-					<input type="hidden" name="intent" value="answer" readOnly />
-					<div className="w-ful mt-3 flex justify-around">
-						<button
-							name="answer"
-							value="sabia"
-							disabled={isPeding}
-							onClick={() => handleAnswer('sabia', id)}
-						>
-							<div className="flex flex-col items-center hover:text-[#007012]">
-								<Icon
-									name="emoji-acertei"
-									className="h-12 w-12  rounded-full hover:bg-[#DAEBD1]"
-								/>
-								<span>Acertei</span>
-							</div>
-						</button>
-
-						<button
-							name="answer"
-							value="duvida"
-							disabled={isPeding}
-							onClick={() => handleAnswer('duvida', id)}
-						>
-							<div className="flex flex-col items-center hover:text-primary">
-								<div className="h-12 w-12 rounded-full hover:bg-purple-500/10">
-									<Icon name="emoji-duvida" className="h-12 w-12" />
+							<button
+								type="submit"
+								name="intent"
+								value="favoritar"
+								onClick={e => e.stopPropagation()}
+							>
+								<div className="flex flex-col items-center text-primary hover:text-red-500">
+									{flashcard.favorite ? (
+										<Icon name="heart" className="h-6 w-6 text-red-500" />
+									) : (
+										<Icon name="heart-outline" className="h-6 w-6" />
+									)}
+									<span
+										className={`${flashcard.favorite ? 'text-red-500' : ''}`}
+									>
+										Favoritar
+									</span>
 								</div>
-								<span>Dúvida</span>
-							</div>
-						</button>
-						<button
-							name="answer"
-							value="nao_sabia"
-							disabled={isPeding}
-							onClick={() => handleAnswer('nao_sabia', id)}
+							</button>
+						</fetcher.Form>
+						<Link
+							to={`lists/${flashcard.id}?${search.toString()}`}
+							onClick={e => e.stopPropagation()}
 						>
-							<div className="flex flex-col items-center hover:text-red-500 ">
-								<Icon
-									name="emoji-errei"
-									className="h-12 w-12 rounded-full hover:bg-[#F8D8DE]"
-								/>
-								<span>Não Sabia</span>
+							<div className="flex flex-col items-center text-primary hover:brightness-150">
+								<Icon name="game-card" className="h-6 w-6" />
+								<span>Listas</span>
 							</div>
-						</button>
+						</Link>
+						{flashcard.fundamento ? (
+							<Dialog>
+								<DialogTrigger onClick={e => e.stopPropagation()}>
+									<div className="flex cursor-pointer flex-col items-center text-primary hover:brightness-150">
+										<Icon name="books" className="h-6 w-6" />
+										<span>Fundamento</span>
+									</div>
+								</DialogTrigger>
+								<DialogContent onClick={e => e.stopPropagation()}>
+									<DialogHeader>
+										<DialogTitle>Fundamento</DialogTitle>
+										<DialogDescription>
+											<div
+												className="overflow-auto whitespace-normal text-justify"
+												dangerouslySetInnerHTML={{
+													__html: flashcard.fundamento,
+												}}
+											/>
+										</DialogDescription>
+									</DialogHeader>
+								</DialogContent>
+							</Dialog>
+						) : null}
+					</div>
+					<div className="flex w-full flex-1 flex-col space-y-3 px-3">
+						<span className="text-3xl font-bold">Resposta</span>
+						<div
+							className="flex-1 overflow-auto text-justify text-xl text-gray-600"
+							dangerouslySetInnerHTML={{ __html: flashcard.verso }}
+						/>
+					</div>
+					<div>
+						<input type="hidden" name="id" readOnly value={flashcard.id} />
+						<input type="hidden" name="intent" value="answer" readOnly />
+						<div className="w-ful mt-3 flex justify-around">
+							<button
+								name="answer"
+								value="sabia"
+								disabled={isPeding}
+								onClick={e => {
+									e.stopPropagation()
+									handleAnswer('sabia', flashcard.id)
+								}}
+							>
+								<div className="flex flex-col items-center hover:text-[#007012]">
+									<Icon
+										name="emoji-acertei"
+										className="h-12 w-12  rounded-full hover:bg-[#DAEBD1]"
+									/>
+									<span>Acertei</span>
+								</div>
+							</button>
+
+							<button
+								name="answer"
+								value="duvida"
+								disabled={isPeding}
+								onClick={e => {
+									e.stopPropagation()
+									handleAnswer('duvida', flashcard.id)
+								}}
+							>
+								<div className="flex flex-col items-center hover:text-primary">
+									<div className="h-12 w-12 rounded-full hover:bg-purple-500/10">
+										<Icon name="emoji-duvida" className="h-12 w-12" />
+									</div>
+									<span>Dúvida</span>
+								</div>
+							</button>
+							<button
+								name="answer"
+								value="nao_sabia"
+								disabled={isPeding}
+								onClick={e => {
+									e.stopPropagation()
+									handleAnswer('nao_sabia', flashcard.id)
+								}}
+							>
+								<div className="flex flex-col items-center hover:text-red-500 ">
+									<Icon
+										name="emoji-errei"
+										className="h-12 w-12 rounded-full hover:bg-[#F8D8DE]"
+									/>
+									<span>Não Sabia</span>
+								</div>
+							</button>
+						</div>
 					</div>
 				</div>
 			</animated.div>

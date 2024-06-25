@@ -1,8 +1,16 @@
 import { Link, json, useLoaderData } from '@remix-run/react'
-import { prisma } from '#app/utils/db.server.js'
+import { Icon } from '#app/components/ui/icon'
+import { prisma } from '#app/utils/db.server'
 
 export async function loader() {
 	const combos = await prisma.combo.findMany({
+		select: {
+			id: true,
+			name: true,
+			description: true,
+			color: true,
+			image: true,
+		},
 		where: {
 			status: true,
 			leisCombos: {
@@ -30,23 +38,9 @@ export async function loader() {
 				},
 			},
 		},
-		include: {
-			leisCombos: { include: { lei: { include: { materia: true } } } },
-		},
 	})
 
-	const mappedCombos = combos.map(combo => {
-		return {
-			id: combo.id,
-			name: combo.name,
-			leis: combo.leisCombos.map(({ lei }) => ({
-				id: lei.id,
-				name: lei.name,
-				materia: { id: lei.materia.id, name: lei.materia.name },
-			})),
-		}
-	})
-	return json({ combos: mappedCombos })
+	return json({ combos })
 }
 
 export default function Index() {
@@ -73,30 +67,30 @@ export default function Index() {
 					</div>
 				)}
 
-				<ul className="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+				<ul className="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
 					{combos.map(combo => (
 						<li key={combo.id}>
 							<Link
 								to={`${combo.id}/type/initial`}
-								className="col-span-1 flex h-36 rounded-md shadow-sm hover:cursor-pointer hover:brightness-95"
+								prefetch="intent"
+								key={combo.id}
+								className=" transition-all duration-300 ease-in-out hover:brightness-95"
 							>
-								<button value="load" name="intent" type="submit">
-									<div className="flex flex-1 items-start justify-between truncate rounded-md border-b border-r border-t border-gray-200 bg-primary shadow-2xl">
-										<div className="flex flex-1 truncate px-4 py-2 text-sm">
-											<div className="flex flex-col truncate text-start">
-												<span className="mb-1 truncate text-xl font-extrabold text-white">
-													{combo.name}
-												</span>
-												<ul className="flex list-outside list-disc flex-col pl-5 text-xs font-semibold text-gray-200">
-													{combo.leis.slice(0, 4).map(lei => (
-														<li key={combo.id + lei.id}>{lei.name}</li>
-													))}
-													{combo.leis.length > 5 ? <li>E mais...</li> : null}
-												</ul>
-											</div>
-										</div>
+								<div className="flex h-60 w-full cursor-pointer flex-col space-y-8 rounded-md border bg-white p-5 shadow-md">
+									<div className="flex w-full justify-end">
+										<Icon
+											name="cards"
+											className="h-16 w-16"
+											style={{ color: combo.color ?? 'gray' }}
+										/>
 									</div>
-								</button>
+									<div>
+										<h1 className="text-xl font-bold">{combo.name}</h1>
+										<span className="text-justify text-xs leading-none text-gray-500">
+											{combo.description}
+										</span>
+									</div>
+								</div>
 							</Link>
 						</li>
 					))}

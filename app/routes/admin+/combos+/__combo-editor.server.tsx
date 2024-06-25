@@ -8,6 +8,7 @@ import { ComboFormSchema } from './__combo-editor'
 
 export async function action({ request, params }: ActionFunctionArgs) {
 	const formData = await request.formData()
+
 	const submission = parseWithZod(formData, { schema: ComboFormSchema })
 	if (submission.status !== 'success') {
 		return json(
@@ -18,16 +19,21 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	const { intent } = submission.value
 
 	if (intent === 'submit') {
-		const { nome, id, status, urlHotmart } = submission.value
+		const { nome, id, status, urlHotmart, color, description } =
+			submission.value
 		const combo = await prisma.combo.upsert({
 			where: { id: id ?? '__new__' },
 			create: {
 				name: nome,
 				status: status ?? false,
+				color,
+				description,
 				urlHotmart,
 			},
 			update: {
 				name: nome,
+				color,
+				description,
 				status: status ?? false,
 				urlHotmart,
 			},

@@ -28,7 +28,6 @@ model User {
   flashcardsFavorites FlashcardUserFavorites[]
   flashcardAnswers    FlashcardUserAnswers[]
   lists               ListsUser[]
-  tempFlashcards      TempFlashcards[]
 
   @@map("users")
 }
@@ -320,7 +319,6 @@ model Flashcard {
   usersFavorites FlashcardUserFavorites[]
   userAnswers    FlashcardUserAnswers[]
   listsUsers     ListsUsersFlashcards[]
-  tempFlashcards TempFlashcards[]
 }
 
 model FlashcardUserFavorites {
@@ -350,15 +348,31 @@ model FlashcardUserAnswers {
 }
 
 model Combo {
-  id         String         @id @default(cuid())
-  name       String
-  status     Boolean        @default(true)
-  urlHotmart String?
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-  leisCombos LeisOnCombos[]
+  id          String         @id @default(cuid())
+  name        String
+  status      Boolean        @default(true)
+  urlHotmart  String?
+  color       String?
+  description String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  leisCombos  LeisOnCombos[]
+  image       ComboImage?
 
   @@map("combos")
+}
+
+model ComboImage {
+  id          String  @id @default(cuid())
+  altText     String?
+  contentType String
+  blob        Bytes
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  combo   Combo  @relation(fields: [comboId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  comboId String @unique
 }
 
 model ListsUser {
@@ -396,14 +410,4 @@ model LeisOnCombos {
 
   @@id([comboId, leiId])
   @@index([comboId])
-}
-
-model TempFlashcards {
-  userId String
-  flashcardId String
-
-  flashcard Flashcard @relation(fields: [flashcardId], references: [id])
-  user User @relation(fields: [userId], references: [id])
-
-  @@id([userId, flashcardId])
 }

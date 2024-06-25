@@ -94,7 +94,7 @@ export default function Layout() {
 						<img
 							src={user ? getUserImgSrc(user.image?.id) : ''}
 							alt="imagem avatar usuário"
-							className="h-32 w-32 rounded-full border-2 border-white"
+							className="h-32 w-32 rounded-full border-2 border-white object-cover"
 						/>
 					</div>
 

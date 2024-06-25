@@ -1,9 +1,28 @@
 import { type LoaderFunctionArgs, json } from '@remix-run/node'
 import { Link, useLoaderData } from '@remix-run/react'
 import { prisma } from '#app/utils/db.server'
+import { getComboImgSrc } from '#app/utils/misc.js'
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const combos = await prisma.combo.findMany({
+		select: {
+			id: true,
+			name: true,
+			color: true,
+			description: true,
+			leisCombos: {
+				select: {
+					lei: {
+						select: {
+							id: true,
+							name: true,
+							materia: { select: { name: true } },
+						},
+					},
+				},
+			},
+			image: true,
+		},
 		where: {
 			status: true,
 			leisCombos: {
@@ -31,23 +50,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
 				},
 			},
 		},
-		include: {
-			leisCombos: { include: { lei: { include: { materia: true } } } },
-		},
 	})
 
-	const mappedCombos = combos.map(combo => {
-		return {
-			id: combo.id,
-			name: combo.name,
-			leis: combo.leisCombos.map(({ lei }) => ({
-				id: lei.id,
-				name: lei.name,
-				materia: { ...lei.materia },
-			})),
-		}
-	})
-	return json({ combos: mappedCombos })
+	return json({ combos })
 }
 
 export default function LeiSeca() {
@@ -73,28 +78,35 @@ export default function LeiSeca() {
 					</div>
 				)}
 
-				<ul className="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+				<ul className="mt-3 grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
 					{combos.map(combo => (
 						<li key={combo.id}>
 							<Link
 								to={combo.id}
 								prefetch="intent"
 								key={combo.id}
-								className="col-span-1 flex h-36 rounded-md shadow-sm hover:cursor-pointer hover:brightness-95"
+								className="relative transition-all duration-300 ease-in-out hover:brightness-95"
 							>
-								<div className="flex flex-1 items-start justify-between truncate rounded-md border-b border-r border-t border-gray-200 bg-primary shadow-2xl ">
-									<div className="flex-1 truncate px-4 py-2 text-sm">
-										<div className="flex flex-col truncate">
-											<span className="mb-1 truncate text-xl font-extrabold text-white">
-												{combo.name}
-											</span>
-											<ul className="flex list-outside list-disc flex-col pl-5 text-xs font-semibold text-gray-200">
-												{combo.leis.slice(0, 4).map(lei => (
-													<li key={combo.id + lei.id}>{lei.name}</li>
-												))}
-												{combo.leis.length > 5 ? <li>E mais...</li> : null}
-											</ul>
-										</div>
+								<div className="absolute right-3 top-3 text-xs text-gray-500">
+									Questões Adaptadas
+								</div>
+								<div className="flex h-full w-full cursor-pointer flex-col space-y-8 rounded-md border bg-white px-5 py-8 shadow-md">
+									<div
+										className="flex h-24 w-24 items-center justify-center rounded-full p-4"
+										style={{ backgroundColor: combo.color ?? 'gray' }}
+									>
+										<img
+											className="h-full w-full rounded-full object-cover"
+											src={getComboImgSrc(combo.image?.id)}
+											alt={combo.name}
+										/>
+									</div>
+
+									<div>
+										<h1 className="text-xl font-bold">{combo.name}</h1>
+										<span className="text-justify text-xs leading-none text-gray-500">
+											{combo.description}
+										</span>
 									</div>
 								</div>
 							</Link>

@@ -207,6 +207,7 @@ export async function buscarFlashcards({
            f.verso,
            f.fundamento,
            materias.name as materia,
+		   materias.color as color,
            leis.name as lei,
            (select true from "FlashcardUserFavorites" fuf
              where fuf."flashcardId" = f.id
@@ -245,7 +246,10 @@ export async function buscarFlashcards({
 			frente: String(flashcard.frente),
 			verso: String(flashcard.verso),
 			fundamento: String(flashcard.fundamento) || undefined,
-			materia: { name: String(flashcard.materia) },
+			materia: {
+				name: String(flashcard.materia),
+				color: String(flashcard.color) || undefined,
+			},
 			lei: { name: String(flashcard.lei) },
 			favorite: !!flashcard.favorite,
 		}))
@@ -256,6 +260,7 @@ select f.id,
            f.verso,
            f.fundamento,
            materias.name as materia,
+		   materias.color as color,
            leis.name as lei,
            (select true from "FlashcardUserFavorites" fuf
              where fuf."flashcardId" = f.id
@@ -293,7 +298,10 @@ select f.id,
 		frente: String(flashcard.frente),
 		verso: String(flashcard.verso),
 		fundamento: String(flashcard.fundamento) || undefined,
-		materia: { name: String(flashcard.materia) },
+		materia: {
+			name: String(flashcard.materia),
+			color: String(flashcard.color) || undefined,
+		},
 		lei: { name: String(flashcard.lei) },
 		favorite: !!flashcard.favorite,
 	}))

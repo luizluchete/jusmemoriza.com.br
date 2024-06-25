@@ -25,8 +25,13 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 	const comboId = params.comboId
 	invariantResponse(comboId, 'comboId não encontrado', { status: 404 })
 	const combo = await prisma.combo.findUnique({
-		where: { id: comboId },
-		include: {
+		select: {
+			id: true,
+			name: true,
+			status: true,
+			color: true,
+			description: true,
+			urlHotmart: true,
 			leisCombos: {
 				include: {
 					lei: {
@@ -34,7 +39,10 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 					},
 				},
 			},
+			image: true,
 		},
+
+		where: { id: comboId },
 	})
 	invariantResponse(combo, 'Combo não encontrado', { status: 404 })
 
@@ -51,7 +59,10 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 			id: combo.id,
 			name: combo.name,
 			status: combo.status,
+			color: combo.color,
+			description: combo.description,
 			urlHotmart: combo.urlHotmart,
+			image: combo.image,
 			leis: combo.leisCombos.map(({ lei }) => ({
 				...lei,
 			})),
@@ -90,7 +101,7 @@ export default function ComboId() {
 	}, [isPending])
 	return (
 		<div>
-			<ComboEditor combo={combo} />
+			<ComboEditor combo={{ ...combo, imageId: combo.image?.id }} />
 			<Spacer size={'4xs'} />
 			<Separator />
 			<Spacer size={'4xs'} />
