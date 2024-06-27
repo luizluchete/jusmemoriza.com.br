@@ -109,12 +109,7 @@ export default function Layout() {
 				</div>
 				<div className="hidden flex-col xl:flex">
 					<Link to={`type/know?${getSearchParams()}`}>
-						<button
-							id="card-sabia"
-							className="w-full"
-							name="tipo"
-							value="sabia"
-						>
+						<button id="card-sabia" className="w-full">
 							<div className="mt-5 flex h-20 cursor-pointer items-center justify-around rounded-2xl bg-white shadow-xl hover:brightness-90">
 								<div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#DAEBD1] font-bold text-[#007012]">
 									{sabia}
@@ -130,13 +125,7 @@ export default function Layout() {
 						</button>
 					</Link>
 					<Link to={`type/noknow?${getSearchParams()}`}>
-						<button
-							id="card-nao-sabia"
-							className="w-full"
-							type="submit"
-							name="tipo"
-							value="nao_sabia"
-						>
+						<button id="card-nao-sabia" className="w-full">
 							<div className="mt-2 flex h-20 cursor-pointer items-center justify-around rounded-2xl bg-white shadow-xl hover:brightness-90">
 								<div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-300 font-bold text-red-500">
 									{naoSabia}
@@ -151,13 +140,7 @@ export default function Layout() {
 						</button>
 					</Link>
 					<Link to={`type/doubt?${getSearchParams()}`}>
-						<button
-							id="card-duvida"
-							className="w-full"
-							type="submit"
-							name="tipo"
-							value="duvida"
-						>
+						<button id="card-duvida" className="w-full">
 							<div className="mt-2 flex h-20 cursor-pointer items-center justify-around rounded-2xl bg-white shadow-xl hover:brightness-90">
 								<div className="flex h-11 w-11 items-center justify-center rounded-full bg-purple-500/10 font-bold text-primary">
 									{duvida}
@@ -170,6 +153,18 @@ export default function Layout() {
 										name="emoji-duvida"
 										className="h-11 w-11 text-primary"
 									/>
+								</div>
+							</div>
+						</button>
+					</Link>
+					<Link to={`type/initial?${getSearchParams()}`}>
+						<button className="w-full">
+							<div className="mt-2 flex h-20 cursor-pointer items-center justify-around rounded-2xl bg-white shadow-xl hover:brightness-90">
+								<span className="font-bold text-primary">
+									Baralho Principal
+								</span>
+								<div className="flex h-9 w-9 items-center justify-center rounded-full">
+									<Icon name="game-card" className="h-11 w-11 text-primary" />
 								</div>
 							</div>
 						</button>
