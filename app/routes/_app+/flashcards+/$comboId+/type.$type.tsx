@@ -309,7 +309,7 @@ function Deck() {
 		from: { x: 0, scale: 1, y: -1000, opacity: 1 },
 		scale: 1,
 		x: 0,
-		y: i < 4 ? i * -4 : -4,
+		y: i > 4 ? 20 : i * 4,
 		delay: i < 4 ? i * 100 : 400,
 		display: 'block',
 		config: { mass: 10, tension: 1000, friction: 300, duration: 600 },
