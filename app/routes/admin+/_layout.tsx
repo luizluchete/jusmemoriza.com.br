@@ -19,6 +19,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function () {
 	const navigation = [
+		{ name: 'Configurações', href: '/admin' },
 		{ name: 'Matérias', href: '/admin/materias' },
 		{ name: 'Bancas', href: '/admin/bancas' },
 		{ name: 'Cargos', href: '/admin/cargos' },
@@ -26,6 +27,7 @@ export default function () {
 		{ name: 'Flashcards', href: '/admin/flashcards' },
 		{ name: 'Combos', href: '/admin/combos' },
 		{ name: 'Importações', href: '/admin/import' },
+		{ name: 'Notificações Quizzes', href: '/admin/notify-quizzes' },
 		{ name: 'Modo Usuário', href: '/home' },
 	]
 	return (
@@ -40,6 +42,7 @@ export default function () {
 								{navigation.map(item => (
 									<li key={item.name}>
 										<NavLink
+											end
 											to={item.href}
 											className={({ isActive }) =>
 												`${

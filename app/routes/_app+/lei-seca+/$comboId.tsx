@@ -1,5 +1,13 @@
-import { parseWithZod } from '@conform-to/zod'
+import { getFormProps, getInputProps, useForm } from '@conform-to/react'
+import { getZodConstraint, parseWithZod } from '@conform-to/zod'
 import { invariantResponse } from '@epic-web/invariant'
+
+import {
+	Dialog as DialogHeadless,
+	DialogBackdrop as DialogBackdropHeadless,
+	DialogPanel as DialogPanelHeadless,
+	DialogTitle as DialogTitleHeadless,
+} from '@headlessui/react'
 import { type Prisma, type Quiz } from '@prisma/client'
 import {
 	type LoaderFunctionArgs,
@@ -16,16 +24,9 @@ import {
 } from '@remix-run/react'
 import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
-import { CheckboxField } from '#app/components/forms'
+import { CheckboxField, ErrorList, TextareaField } from '#app/components/forms'
 import { Button } from '#app/components/ui/button'
-import { Combobox } from '#app/components/ui/combobox.js'
-import {
-	Dialog,
-	DialogClose,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from '#app/components/ui/dialog'
+import { Combobox } from '#app/components/ui/combobox'
 import { Icon } from '#app/components/ui/icon'
 import {
 	Sheet,
@@ -37,6 +38,7 @@ import {
 import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
 import { cn } from '#app/utils/misc'
+import { notifyErrorQuiz } from './lei-seca.server'
 
 const PAGE_SIZE = 10
 
@@ -51,9 +53,21 @@ const schemaFavoriteQuiz = z.object({
 	favorite: z.enum(['yes', 'no']),
 })
 
+const notifyErrorSchema = z.object({
+	intent: z.literal('notifyError'),
+	quizId: z.string(),
+	message: z
+		.string({ required_error: 'Descreva o erro encontado' })
+		.min(20, { message: 'Descreva em mais de 20 caracteres o erro encontrado' })
+		.max(500, {
+			message: 'Descreva em menos de 500 caracteres o erro encontrado',
+		}),
+})
+
 const schemaQuiz = z.discriminatedUnion('intent', [
 	schemaAnswerQuiz,
 	schemaFavoriteQuiz,
+	notifyErrorSchema,
 ])
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -261,7 +275,25 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
 	const userId = await requireUserId(request)
 	const formData = await request.formData()
-	const submission = parseWithZod(formData, { schema: schemaQuiz })
+	const submission = await parseWithZod(formData, {
+		schema: schemaQuiz.superRefine(async (data, ctx) => {
+			if (data.intent === 'notifyError') {
+				const { quizId } = data
+				const existsNotify = await prisma.notifyErrorQuiz.findFirst({
+					where: { fixed: false, quizId, userId },
+				})
+				if (existsNotify) {
+					ctx.addIssue({
+						path: [''],
+						code: z.ZodIssueCode.custom,
+						message:
+							'Você já possui uma notificação de erro para este quiz em aberto. Aguarde a verificação da equipe !',
+					})
+				}
+			}
+		}),
+		async: true,
+	})
 	if (submission.status !== 'success') {
 		return json({ result: submission.reply() }, { status: 400 })
 	}
@@ -297,6 +329,24 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		return json(null)
+	}
+
+	if (intent === 'notifyError') {
+		const { message, quizId } = submission.value
+		const response = await notifyErrorQuiz(quizId, userId, message)
+		if (!response) {
+			return json(
+				{
+					result: submission.reply({
+						formErrors: [
+							'Problema ao gravar a notificação de erro, entre em contato com o suporte.',
+						],
+					}),
+				},
+				{ status: 400 },
+			)
+		}
+		return json({ result: submission.reply({ resetForm: true }) })
 	}
 	return json(null)
 }
@@ -711,6 +761,8 @@ function CardQuiz({
 	index: number
 }) {
 	const [open, setOpen] = useState(false)
+	const [openNotifyError, setOpenNotifyError] = useState(false)
+
 	const {
 		comentario,
 		enunciado,
@@ -748,6 +800,18 @@ function CardQuiz({
 
 	const [searchParams] = useSearchParams()
 	const page = Number(searchParams.get('page')) || 1
+
+	let fecherNotify = useFetcher<{ result: {} }>()
+	const [form, fields] = useForm({
+		id: `notify-quiz-${id}`,
+		constraint: getZodConstraint(notifyErrorSchema),
+		lastResult: fecherNotify.data?.result,
+		onValidate({ formData }) {
+			return parseWithZod(formData, { schema: notifyErrorSchema })
+		},
+		shouldRevalidate: 'onBlur',
+	})
+
 	return (
 		<>
 			<li className="flex w-full flex-col space-y-3 rounded-lg border border-primary bg-white px-2 py-2 shadow-lg">
@@ -811,69 +875,160 @@ function CardQuiz({
 					</fetcherAnswer.Form>
 				</div>
 				{quizRespondido && (
-					<div className="rounded-md border border-dashed border-primary bg-[#F5F6FE] p-5">
-						<div className="flex items-center justify-between">
-							{acertou ? (
-								<span className="text-xl font-bold text-[#017013]">
-									Acertou !
-								</span>
-							) : (
-								<span className="text-xl font-bold text-red-500">Errou !</span>
-							)}
+					<div>
+						<div className="rounded-md border border-dashed border-primary bg-[#F5F6FE] p-5">
+							<div className="flex items-center justify-between">
+								{acertou ? (
+									<span className="text-xl font-bold text-[#017013]">
+										Acertou !
+									</span>
+								) : (
+									<span className="text-xl font-bold text-red-500">
+										Errou !
+									</span>
+								)}
 
-							<div className="flex">
-								<fetcherFavorite.Form method="post">
-									<input
-										type="hidden"
-										name="intent"
-										value="favorite"
-										readOnly
-									/>
-									<input type="hidden" name="quizId" readOnly value={id} />
-									<input
-										type="text"
-										hidden
-										name="favorite"
-										readOnly
-										value={optimisticFavorite ? 'no' : 'yes'}
-									/>
-									<button className="text-2xl" type="submit">
-										{optimisticFavorite ? '❤ ' : '🤍'}
+								<div className="flex">
+									<fetcherFavorite.Form method="post">
+										<input
+											type="hidden"
+											name="intent"
+											value="favorite"
+											readOnly
+										/>
+										<input type="hidden" name="quizId" readOnly value={id} />
+										<input
+											type="text"
+											hidden
+											name="favorite"
+											readOnly
+											value={optimisticFavorite ? 'no' : 'yes'}
+										/>
+										<button className="text-2xl" type="submit">
+											{optimisticFavorite ? '❤ ' : '🤍'}
+										</button>
+									</fetcherFavorite.Form>
+									<button
+										onClick={() => setOpen(!open)}
+										className="ml-5 w-36 rounded-lg border border-primary px-5 py-1 text-base font-bold text-primary hover:bg-purple-50"
+									>
+										Fundamento
 									</button>
-								</fetcherFavorite.Form>
-								<button
-									onClick={() => setOpen(!open)}
-									className="ml-5 w-36 rounded-lg border border-primary px-5 py-1 text-base font-bold text-primary hover:bg-purple-50"
-								>
-									Fundamento
-								</button>
+								</div>
 							</div>
+							<h3 className="mb-1 mt-3 text-xl font-normal text-primary">
+								Comentário:
+							</h3>
+							<div
+								className="flex whitespace-pre-line text-justify text-xl font-normal text-[#696969]"
+								dangerouslySetInnerHTML={{ __html: comentario }}
+							/>
 						</div>
-						<h3 className="mb-1 mt-3 text-xl font-normal text-primary">
-							Comentário:
-						</h3>
-						<div
-							className="flex whitespace-pre-line text-justify text-xl font-normal text-[#696969]"
-							dangerouslySetInnerHTML={{ __html: comentario }}
-						/>
+						<div className="mt-3 flex w-full">
+							<button onClick={() => setOpenNotifyError(true)}>
+								<div className="flex w-min cursor-pointer space-x-2 border-t-2 px-2 py-2 text-primary transition-all duration-300 hover:scale-105 hover:border-primary hover:bg-gray-100">
+									<Icon name="flag" className="h-6 w-6" />
+									<span className="w-max">Notificar Erro</span>
+								</div>
+							</button>
+
+							<div className="w-full flex-1 border-t-2"></div>
+						</div>
 					</div>
 				)}
-				<Dialog open={open} onOpenChange={setOpen}>
-					<DialogContent>
-						<DialogHeader className="flex items-center justify-center">
-							<DialogTitle>Fundamento</DialogTitle>
-						</DialogHeader>
-						<div
-							className="text-justify"
-							dangerouslySetInnerHTML={{
-								__html: fundamento || '',
-							}}
-						/>
-						<DialogClose>
-							<Button>Voltar</Button>
-						</DialogClose>
-					</DialogContent>
-				</Dialog>
+				<DialogHeadless className="relative z-10" open={open} onClose={setOpen}>
+					<DialogBackdropHeadless
+						transition
+						className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in"
+					/>
+
+					<div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+						<div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+							<DialogPanelHeadless
+								transition
+								className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all data-[closed]:translate-y-4 data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in sm:my-8 sm:w-full sm:max-w-sm sm:p-6 data-[closed]:sm:translate-y-0 data-[closed]:sm:scale-95"
+							>
+								<div>
+									<DialogTitleHeadless className="text-center text-xl font-bold">
+										Fundamento
+									</DialogTitleHeadless>
+
+									<div
+										className="text-justify"
+										dangerouslySetInnerHTML={{
+											__html: fundamento || '',
+										}}
+									/>
+								</div>
+								<div className="mt-5 sm:mt-6">
+									<button
+										type="button"
+										className="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+										onClick={() => setOpen(false)}
+									>
+										Voltar
+									</button>
+								</div>
+							</DialogPanelHeadless>
+						</div>
+					</div>
+				</DialogHeadless>
+
+				<DialogHeadless
+					className="relative z-10"
+					open={openNotifyError}
+					onClose={() => setOpenNotifyError(false)}
+				>
+					<DialogBackdropHeadless
+						transition
+						className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in"
+					/>
+
+					<div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+						<div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+							<DialogPanelHeadless
+								transition
+								className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all data-[closed]:translate-y-4 data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in sm:my-8 sm:w-full sm:max-w-sm sm:p-6 data-[closed]:sm:translate-y-0 data-[closed]:sm:scale-95"
+							>
+								<div>
+									<fecherNotify.Form
+										method="post"
+										{...getFormProps(form)}
+										className="space-y-1"
+									>
+										<TextareaField
+											labelProps={{
+												children: 'Descreva o erro encontrado',
+											}}
+											textareaProps={{
+												...getInputProps(fields.message, { type: 'text' }),
+											}}
+											errors={fields.message.errors}
+										/>
+										<ErrorList errors={form.errors} id={form.errorId} />
+										<input type="hidden" name="quizId" value={id} readOnly />
+										<input
+											type="hidden"
+											name="intent"
+											value="notifyError"
+											readOnly
+										/>
+										<div className="space-x-2">
+											<Button>Enviar</Button>
+											<Button
+												variant="destructive"
+												type="button"
+												onClick={() => setOpenNotifyError(false)}
+											>
+												Cancelar
+											</Button>
+										</div>
+									</fecherNotify.Form>
+								</div>
+							</DialogPanelHeadless>
+						</div>
+					</div>
+				</DialogHeadless>
 			</li>
 		</>
 	)

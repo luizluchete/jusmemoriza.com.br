@@ -28,6 +28,7 @@ model User {
   flashcardsFavorites FlashcardUserFavorites[]
   flashcardAnswers    FlashcardUserAnswers[]
   lists               ListsUser[]
+  NotifyErrorQuiz     NotifyErrorQuiz[]
 
   @@map("users")
 }
@@ -253,24 +254,25 @@ model Artigo {
 }
 
 model Quiz {
-  id            String              @id @default(cuid())
-  status        Boolean             @default(true)
-  enunciado     String
-  comentario    String
-  fundamento    String?
-  tags          String?
-  verdadeiro    Boolean
-  ano           Int?
-  artigoId      String
-  bancaId       String?
-  cargoId       String?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  artigo        Artigo              @relation(fields: [artigoId], references: [id])
-  banca         Banca?              @relation(fields: [bancaId], references: [id])
-  cargo         Cargo?              @relation(fields: [cargoId], references: [id])
-  userResults   QuizUserResults[]
-  userFavorites QuizUserFavorites[]
+  id              String              @id @default(cuid())
+  status          Boolean             @default(true)
+  enunciado       String
+  comentario      String
+  fundamento      String?
+  tags            String?
+  verdadeiro      Boolean
+  ano             Int?
+  artigoId        String
+  bancaId         String?
+  cargoId         String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  artigo          Artigo              @relation(fields: [artigoId], references: [id])
+  banca           Banca?              @relation(fields: [bancaId], references: [id])
+  cargo           Cargo?              @relation(fields: [cargoId], references: [id])
+  userResults     QuizUserResults[]
+  userFavorites   QuizUserFavorites[]
+  NotifyErrorQuiz NotifyErrorQuiz[]
 
   @@index([artigoId])
   @@index([bancaId, cargoId])
@@ -410,4 +412,28 @@ model LeisOnCombos {
 
   @@id([comboId, leiId])
   @@index([comboId])
+}
+
+model NotifyErrorQuiz {
+  id           String   @id @default(cuid())
+  quizId       String
+  userId       String
+  userMessage  String
+  fixedMessage String?
+  fixed        Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  quiz Quiz @relation(fields: [quizId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Config {
+  id          String   @id @default(cuid())
+  notifyEmail String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("configs")
 }
