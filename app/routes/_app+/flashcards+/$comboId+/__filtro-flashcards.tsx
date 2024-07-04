@@ -62,14 +62,31 @@ export function SheetFilterFlashcards({ title }: { title: string }) {
 					))}
 
 					<MultiCombobox
-						placeholder="Matérias..."
-						inputMessage='Buscar por "Matérias"'
-						options={materias
-							.filter(({ id }) => !materiasSelected.some(p => p.id === id))
-							.map(({ id, name }) => ({
-								label: name,
-								id,
-							}))}
+						placeholder="Matérias"
+						name="materiaId"
+						options={materias.map(({ id, name }) => ({
+							label: name,
+							id,
+						}))}
+						selectedValues={materiasSelected.map(({ id, name }) => ({
+							label: name,
+							id,
+						}))}
+						setSelectedValues={setMateriasSelected}
+					/>
+
+					<MultiCombobox
+						placeholder="Leis"
+						name="leiId"
+						options={leis?.map(({ id, name }) => ({
+							label: name,
+							id,
+						}))}
+						selectedValues={leisSelected.map(({ id, name }) => ({
+							label: name,
+							id,
+						}))}
+						setSelectedValues={setLeisSelected}
 					/>
 
 					<CheckboxField
