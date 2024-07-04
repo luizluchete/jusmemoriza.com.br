@@ -28,7 +28,8 @@ model User {
   flashcardsFavorites FlashcardUserFavorites[]
   flashcardAnswers    FlashcardUserAnswers[]
   lists               ListsUser[]
-  NotifyErrorQuiz     NotifyErrorQuiz[]
+  NotifyErrorQuiz     NotifyErrorQuiz[]        @relation(name: "user")
+  fixedBy             NotifyErrorQuiz[]        @relation(name: "fixedBy")
 
   @@map("users")
 }
@@ -421,10 +422,12 @@ model NotifyErrorQuiz {
   userMessage  String
   fixedMessage String?
   fixed        Boolean  @default(false)
+  fixedById    String?
   createdAt    DateTime @default(now())
 
-  quiz Quiz @relation(fields: [quizId], references: [id])
-  user User @relation(fields: [userId], references: [id])
+  quiz    Quiz  @relation(fields: [quizId], references: [id])
+  user    User  @relation("user", fields: [userId], references: [id])
+  fixedBy User? @relation("fixedBy", fields: [fixedById], references: [id])
 
   @@index([userId])
 }

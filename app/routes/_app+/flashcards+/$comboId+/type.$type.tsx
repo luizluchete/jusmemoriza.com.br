@@ -61,9 +61,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	const page = Number(url.searchParams.get('page')) || 1
 	const materiaId = url.searchParams.getAll('materiaId')
 	const leiId = url.searchParams.getAll('leiId')
-	const tituloId = url.searchParams.getAll('tituloId')
-	const capituloId = url.searchParams.getAll('capituloId')
-	const artigoId = url.searchParams.getAll('artigoId')
 	const onlyFavorites = url.searchParams.get('favorite') === 'on'
 
 	const materiasPromise = prisma.materia.findMany({
@@ -81,67 +78,16 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 			materiaId: materiaId.length ? { in: materiaId } : undefined,
 		},
 	})
-	const titulosPromise = prisma.titulo.findMany({
-		select: { id: true, name: true },
-		where: {
-			status: true,
-			leiId: leiId.length ? { in: leiId } : undefined,
-			lei: {
-				combosLeis: { some: { comboId } },
-				materiaId: materiaId.length ? { in: materiaId } : undefined,
-			},
-		},
-	})
-	const capitulosPromise = prisma.capitulo.findMany({
-		select: { id: true, name: true },
-		where: {
-			status: true,
-			tituloId: tituloId.length ? { in: tituloId } : undefined,
-			titulo: {
-				leiId: leiId.length ? { in: leiId } : undefined,
-				lei: {
-					combosLeis: { some: { comboId } },
-					materiaId: materiaId.length ? { in: materiaId } : undefined,
-				},
-			},
-		},
-	})
-	const artigosPromise = prisma.artigo.findMany({
-		select: { id: true, name: true },
-		where: {
-			status: true,
-			capituloId: capituloId.length ? { in: capituloId } : undefined,
-			capitulo: {
-				tituloId: tituloId.length ? { in: tituloId } : undefined,
-				titulo: {
-					leiId: leiId.length ? { in: leiId } : undefined,
-					lei: {
-						materiaId: materiaId.length ? { in: materiaId } : undefined,
-						combosLeis: { some: { comboId } },
-					},
-				},
-			},
-		},
-	})
 
-	const [materias, leis, titulos, capitulos, artigos] = await Promise.all([
-		materiasPromise,
-		leisPromise,
-		titulosPromise,
-		capitulosPromise,
-		artigosPromise,
-	])
+	const [materias, leis] = await Promise.all([materiasPromise, leisPromise])
 
 	const flashcards = await buscarFlashcards({
 		comboId,
 		userId,
 		tipo: type,
 		page,
-		artigoId,
-		capituloId,
 		leiId,
 		materiaId,
-		tituloId,
 		onlyFavorites,
 	})
 	return json({
@@ -156,9 +102,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		})),
 		materias,
 		leis,
-		titulos,
-		capitulos,
-		artigos,
 	})
 }
 
@@ -464,6 +407,49 @@ function Flashcard({
 	const navigation = useNavigation()
 	let isPeding =
 		navigation.state === 'submitting' || navigation.state === 'loading'
+
+	const { type } = useParams()
+
+	function returnIcon() {
+		if (type === 'know') {
+			return (
+				<Icon
+					name="emoji-acertei"
+					className="h-24 w-24 rounded-full bg-[#DAEBD1] object-cover text-[#007012]"
+				/>
+			)
+		}
+
+		if (type === 'doubt') {
+			return (
+				<Icon
+					name="emoji-duvida"
+					className="h-24 w-24 rounded-full bg-purple-500/20 object-cover text-primary"
+				/>
+			)
+		}
+
+		if (type === 'noknow') {
+			return (
+				<Icon
+					name="emoji-errei"
+					className="h-24 w-24 rounded-full bg-[#F8D8DE] object-cover text-red-500"
+				/>
+			)
+		}
+
+		return (
+			<div
+				className="flex h-24 w-24 items-center justify-center rounded-full p-4 shadow-xl"
+				style={{ backgroundColor: flashcard.materia.color ?? 'gray' }}
+			>
+				<Icon
+					name="question"
+					className="h-full w-full rounded-full object-cover text-white"
+				/>
+			</div>
+		)
+	}
 	return (
 		<div className="relative h-[600px] w-[440px]">
 			<animated.div
@@ -481,15 +467,8 @@ function Flashcard({
 					style={{ borderColor: flashcard.materia.color ?? 'gray' }}
 				>
 					<div className="mt-20 flex w-full flex-col items-center justify-center space-y-5">
-						<div
-							className="flex h-24 w-24 items-center justify-center rounded-full p-4 shadow-xl"
-							style={{ backgroundColor: flashcard.materia.color ?? 'gray' }}
-						>
-							<Icon
-								name="question"
-								className="h-full w-full rounded-full object-cover text-white"
-							/>
-						</div>
+						{returnIcon()}
+
 						<h1 className="text-3xl font-bold">{flashcard.materia.name}</h1>
 						<div
 							className="flex-1 overflow-auto px-5 text-justify text-xl text-gray-600"

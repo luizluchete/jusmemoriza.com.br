@@ -26,8 +26,8 @@ import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import { CheckboxField, ErrorList, TextareaField } from '#app/components/forms'
 import { Button } from '#app/components/ui/button'
-import { Combobox } from '#app/components/ui/combobox'
 import { Icon } from '#app/components/ui/icon'
+import { MultiCombobox } from '#app/components/ui/multi-combobox'
 import {
 	Sheet,
 	SheetContent,
@@ -141,56 +141,67 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 			Lei: { some: { combosLeis: { some: { comboId } } } },
 		},
 	})
-	const leisPromise = prisma.lei.findMany({
-		select: { id: true, name: true },
-		where: {
-			status: true,
-			combosLeis: { some: { comboId } },
-			materiaId: materiaId.length ? { in: materiaId } : undefined,
-		},
-	})
-	const titulosPromise = prisma.titulo.findMany({
-		select: { id: true, name: true },
-		where: {
-			status: true,
-			leiId: leiId.length ? { in: leiId } : undefined,
-			lei: {
-				combosLeis: { some: { comboId } },
-				materiaId: materiaId.length ? { in: materiaId } : undefined,
-			},
-		},
-	})
-	const capitulosPromise = prisma.capitulo.findMany({
-		select: { id: true, name: true },
-		where: {
-			status: true,
-			tituloId: tituloId.length ? { in: tituloId } : undefined,
-			titulo: {
-				leiId: leiId.length ? { in: leiId } : undefined,
-				lei: {
+
+	const leisPromise = materiaId.length
+		? prisma.lei.findMany({
+				select: { id: true, name: true },
+				where: {
+					status: true,
+
 					combosLeis: { some: { comboId } },
 					materiaId: materiaId.length ? { in: materiaId } : undefined,
 				},
-			},
-		},
-	})
-	const artigosPromise = prisma.artigo.findMany({
-		select: { id: true, name: true },
-		where: {
-			status: true,
-			capituloId: capituloId.length ? { in: capituloId } : undefined,
-			capitulo: {
-				tituloId: tituloId.length ? { in: tituloId } : undefined,
-				titulo: {
+			})
+		: undefined
+
+	const titulosPromise = leiId.length
+		? prisma.titulo.findMany({
+				select: { id: true, name: true },
+				where: {
+					status: true,
 					leiId: leiId.length ? { in: leiId } : undefined,
 					lei: {
-						materiaId: materiaId.length ? { in: materiaId } : undefined,
 						combosLeis: { some: { comboId } },
+						materiaId: materiaId.length ? { in: materiaId } : undefined,
 					},
 				},
-			},
-		},
-	})
+			})
+		: undefined
+	const capitulosPromise = tituloId.length
+		? prisma.capitulo.findMany({
+				select: { id: true, name: true },
+				where: {
+					status: true,
+					tituloId: tituloId.length ? { in: tituloId } : undefined,
+					titulo: {
+						leiId: leiId.length ? { in: leiId } : undefined,
+						lei: {
+							combosLeis: { some: { comboId } },
+							materiaId: materiaId.length ? { in: materiaId } : undefined,
+						},
+					},
+				},
+			})
+		: undefined
+	const artigosPromise = capituloId.length
+		? prisma.artigo.findMany({
+				select: { id: true, name: true },
+				where: {
+					status: true,
+					capituloId: capituloId.length ? { in: capituloId } : undefined,
+					capitulo: {
+						tituloId: tituloId.length ? { in: tituloId } : undefined,
+						titulo: {
+							leiId: leiId.length ? { in: leiId } : undefined,
+							lei: {
+								materiaId: materiaId.length ? { in: materiaId } : undefined,
+								combosLeis: { some: { comboId } },
+							},
+						},
+					},
+				},
+			})
+		: undefined
 
 	const bancasPromise = prisma.banca.findMany({
 		select: { id: true, name: true },
@@ -382,20 +393,28 @@ export default function LeiSecaComboId() {
 		.map(({ id, name }) => ({ id, name }))
 
 	const searchLeis = leis
-		.filter(({ id }) => leiId.includes(id))
-		.map(({ id, name }) => ({ id, name }))
+		? leis
+				.filter(({ id }) => leiId.includes(id))
+				.map(({ id, name }) => ({ id, name }))
+		: []
 
 	const searchTitulos = titulos
-		.filter(({ id }) => tituloId.includes(id))
-		.map(({ id, name }) => ({ id, name }))
+		? titulos
+				.filter(({ id }) => tituloId.includes(id))
+				.map(({ id, name }) => ({ id, name }))
+		: []
 
 	const searchCapitulos = capitulos
-		.filter(({ id }) => capituloId.includes(id))
-		.map(({ id, name }) => ({ id, name }))
+		? capitulos
+				.filter(({ id }) => capituloId.includes(id))
+				.map(({ id, name }) => ({ id, name }))
+		: []
 
 	const searchArtigos = artigos
-		.filter(({ id }) => artigoId.includes(id))
-		.map(({ id, name }) => ({ id, name }))
+		? artigos
+				.filter(({ id }) => artigoId.includes(id))
+				.map(({ id, name }) => ({ id, name }))
+		: []
 
 	const searchBancas = bancas
 		.filter(({ id }) => bancaId.includes(id))
@@ -495,122 +514,75 @@ export default function LeiSecaComboId() {
 								id="search-quizzes-form"
 								onChange={e => submit(e.currentTarget)}
 							>
-								{materiasSelected.map(({ id }) => (
-									<input key={id} type="hidden" value={id} name="materiaId" />
-								))}
-								{leisSelected.map(({ id }) => (
-									<input key={id} type="hidden" value={id} name="leiId" />
-								))}
-								{titulosSelected.map(({ id }) => (
-									<input key={id} type="hidden" value={id} name="tituloId" />
-								))}
-								{capitulosSelected.map(({ id }) => (
-									<input key={id} type="hidden" value={id} name="capituloId" />
-								))}
-								{artigosSelected.map(({ id }) => (
-									<input key={id} type="hidden" value={id} name="artigoId" />
-								))}
-								{bancasSelected.map(({ id }) => (
-									<input key={id} type="hidden" value={id} name="bancaId" />
-								))}
-								{cargosSelected.map(({ id }) => (
-									<input key={id} type="hidden" value={id} name="cargoId" />
-								))}
-								<Combobox
-									placeholder="Matérias..."
-									inputMessage='Buscar por "Matérias"'
-									values={materias
-										.filter(
-											({ id }) => !materiasSelected.some(p => p.id === id),
-										)
-										.map(({ id, name }) => ({
-											label: name,
-											id,
-										}))}
-									onSelect={(id, name) => {
-										setMateriasSelected(prev => [...prev, { id, name }])
-									}}
+								<MultiCombobox
+									placeholder="Matérias"
+									name="materiaId"
+									options={materias.map(({ id, name }) => ({
+										label: name,
+										id,
+									}))}
+									selectedValues={materiasSelected.map(({ id, name }) => ({
+										label: name,
+										id,
+									}))}
+									setSelectedValues={setMateriasSelected}
 								/>
-								<Combobox
-									placeholder="Leis..."
-									inputMessage='Buscar por "Leis"'
-									values={leis
-										.filter(({ id }) => !leisSelected.some(p => p.id === id))
-										.map(({ id, name }) => ({
-											label: name,
-											id,
-										}))}
-									onSelect={(id, name) => {
-										setLeisSelected(prev => [...prev, { id, name }])
-									}}
+
+								<MultiCombobox
+									placeholder="Leis"
+									name="leiId"
+									options={leis?.map(({ id, name }) => ({
+										label: name,
+										id,
+									}))}
+									selectedValues={leisSelected.map(({ id, name }) => ({
+										label: name,
+										id,
+									}))}
+									setSelectedValues={setLeisSelected}
 								/>
-								<Combobox
-									placeholder="Títulos da Leis..."
-									inputMessage='Buscar por "Títulos das Leis"'
-									values={titulos
-										.filter(({ id }) => !titulosSelected.some(p => p.id === id))
-										.map(({ id, name }) => ({
-											label: name,
-											id,
-										}))}
-									onSelect={(id, name) => {
-										setTitulosSelected(prev => [...prev, { id, name }])
-									}}
+
+								<MultiCombobox
+									placeholder="Temas"
+									name="tituloId"
+									options={titulos?.map(({ id, name }) => ({
+										label: name,
+										id,
+									}))}
+									selectedValues={titulosSelected.map(({ id, name }) => ({
+										label: name,
+										id,
+									}))}
+									setSelectedValues={setTitulosSelected}
 								/>
-								<Combobox
-									placeholder="Capítulos..."
-									inputMessage='Buscar por "Capítulos"'
-									values={capitulos
-										.filter(
-											({ id }) => !capitulosSelected.some(p => p.id === id),
-										)
-										.map(({ id, name }) => ({
-											label: name,
-											id,
-										}))}
-									onSelect={(id, name) => {
-										setCapitulosSelected(prev => [...prev, { id, name }])
-									}}
+								<MultiCombobox
+									placeholder="Subtema"
+									name="capituloId"
+									options={capitulos?.map(({ id, name }) => ({
+										label: name,
+										id,
+									}))}
+									selectedValues={capitulosSelected.map(({ id, name }) => ({
+										label: name,
+										id,
+									}))}
+									setSelectedValues={setCapitulosSelected}
 								/>
-								<Combobox
-									placeholder="Artigos..."
-									inputMessage='Buscar por "Artigos"'
-									values={artigos
-										.filter(({ id }) => !artigosSelected.some(p => p.id === id))
-										.map(({ id, name }) => ({
-											label: name,
-											id,
-										}))}
-									onSelect={(id, name) => {
-										setArtigosSelected(prev => [...prev, { id, name }])
-									}}
+
+								<MultiCombobox
+									placeholder="artigos"
+									name="artigoId"
+									options={artigos?.map(({ id, name }) => ({
+										label: name,
+										id,
+									}))}
+									selectedValues={artigosSelected.map(({ id, name }) => ({
+										label: name,
+										id,
+									}))}
+									setSelectedValues={setArtigosSelected}
 								/>
-								<Combobox
-									placeholder="Bancas..."
-									inputMessage='Buscar por "Bancas"'
-									values={bancas
-										.filter(({ id }) => !bancasSelected.some(p => p.id === id))
-										.map(({ id, name }) => ({
-											label: name,
-											id,
-										}))}
-									onSelect={(id, name) => {
-										setbancasSelected(prev => [...prev, { id, name }])
-									}}
-								/>
-								<Combobox
-									placeholder="Cargos..."
-									inputMessage='Buscar por "Cargos"'
-									values={cargos
-										.filter(({ id }) => !cargosSelected.some(p => p.id === id))
-										.map(({ id, name }) => ({
-											label: name,
-											id,
-										}))}
-									onSelect={(id, name) => {
-										setCargosSelected(prev => [...prev, { id, name }])
-									}}
-								/>
+
 								<CheckboxField
 									labelProps={{
 										children: 'Somente Favoritos ?',
@@ -625,7 +597,7 @@ export default function LeiSecaComboId() {
 							</Form>
 
 							<div className="mt-5">
-								<h2 className="text-xl font-semibold">Filtrar por:</h2>
+								<h2 className="text-xl font-semibold">Filtros:</h2>
 								<div className="flex flex-col space-y-1">
 									{materiasSelected.length ? (
 										<FilteredItem

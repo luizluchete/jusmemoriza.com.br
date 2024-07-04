@@ -7,8 +7,8 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { CheckboxField } from '#app/components/forms'
 import { Button } from '#app/components/ui/button'
-import { Combobox } from '#app/components/ui/combobox'
 import { Icon } from '#app/components/ui/icon'
+import { MultiCombobox } from '#app/components/ui/multi-combobox'
 import {
 	Sheet,
 	SheetTrigger,
@@ -21,39 +21,22 @@ import { type loader } from './type.$type'
 export function SheetFilterFlashcards({ title }: { title: string }) {
 	const formRef = useRef<HTMLFormElement>(null)
 	const submit = useSubmit()
-	const { artigos, capitulos, leis, materias, titulos } =
-		useLoaderData<typeof loader>()
+	const { leis, materias } = useLoaderData<typeof loader>()
 
 	const [searchParams] = useSearchParams()
 	const searchFavorite = !!searchParams.get('favorite')
 	const materiaId = searchParams.getAll('materiaId')
 	const leiId = searchParams.getAll('leiId')
-	const tituloId = searchParams.getAll('tituloId')
-	const capituloId = searchParams.getAll('capituloId')
-	const artigoId = searchParams.getAll('artigoId')
 	const searchMaterias = materias.filter(({ id }) => materiaId.includes(id))
 	const searchLeis = leis.filter(({ id }) => leiId.includes(id))
-	const searchTitulos = titulos.filter(({ id }) => tituloId.includes(id))
-	const searchCapitulos = capitulos.filter(({ id }) => capituloId.includes(id))
-	const searchArtigos = artigos.filter(({ id }) => artigoId.includes(id))
 	const [materiasSelected, setMateriasSelected] = useState(searchMaterias)
 	const [leisSelected, setLeisSelected] = useState(searchLeis)
-	const [titulosSelected, setTitulosSelected] = useState(searchTitulos)
-	const [capitulosSelected, setCapitulosSelected] = useState(searchCapitulos)
-	const [artigosSelected, setArtigosSelected] = useState(searchArtigos)
 
 	useEffect(() => {
 		if (formRef.current) {
 			submit(formRef.current)
 		}
-	}, [
-		materiasSelected,
-		leisSelected,
-		titulosSelected,
-		capitulosSelected,
-		artigosSelected,
-		submit,
-	])
+	}, [materiasSelected, leisSelected, submit])
 
 	return (
 		<Sheet>
@@ -66,7 +49,7 @@ export function SheetFilterFlashcards({ title }: { title: string }) {
 					<SheetTitle>{title}</SheetTitle>
 				</SheetHeader>
 				<Form
-					className="flex flex-col space-y-1"
+					className="flex flex-col space-y-2"
 					ref={formRef}
 					id="search-flashcards"
 					onChange={e => submit(e.currentTarget)}
@@ -77,80 +60,16 @@ export function SheetFilterFlashcards({ title }: { title: string }) {
 					{leisSelected.map(({ id }) => (
 						<input key={id} type="hidden" value={id} name="leiId" />
 					))}
-					{titulosSelected.map(({ id }) => (
-						<input key={id} type="hidden" value={id} name="tituloId" />
-					))}
-					{capitulosSelected.map(({ id }) => (
-						<input key={id} type="hidden" value={id} name="capituloId" />
-					))}
-					{artigosSelected.map(({ id }) => (
-						<input key={id} type="hidden" value={id} name="artigoId" />
-					))}
 
-					<Combobox
+					<MultiCombobox
 						placeholder="Matérias..."
 						inputMessage='Buscar por "Matérias"'
-						values={materias
+						options={materias
 							.filter(({ id }) => !materiasSelected.some(p => p.id === id))
 							.map(({ id, name }) => ({
 								label: name,
 								id,
 							}))}
-						onSelect={(id, name) => {
-							setMateriasSelected(prev => [...prev, { id, name }])
-						}}
-					/>
-					<Combobox
-						placeholder="Leis..."
-						inputMessage='Buscar por "Leis"'
-						values={leis
-							.filter(({ id }) => !leisSelected.some(p => p.id === id))
-							.map(({ id, name }) => ({
-								label: name,
-								id,
-							}))}
-						onSelect={(id, name) => {
-							setLeisSelected(prev => [...prev, { id, name }])
-						}}
-					/>
-					<Combobox
-						placeholder="Títulos da Leis..."
-						inputMessage='Buscar por "Títulos das Leis"'
-						values={titulos
-							.filter(({ id }) => !titulosSelected.some(p => p.id === id))
-							.map(({ id, name }) => ({
-								label: name,
-								id,
-							}))}
-						onSelect={(id, name) => {
-							setTitulosSelected(prev => [...prev, { id, name }])
-						}}
-					/>
-					<Combobox
-						placeholder="Capítulos..."
-						inputMessage='Buscar por "Capítulos"'
-						values={capitulos
-							.filter(({ id }) => !capitulosSelected.some(p => p.id === id))
-							.map(({ id, name }) => ({
-								label: name,
-								id,
-							}))}
-						onSelect={(id, name) => {
-							setCapitulosSelected(prev => [...prev, { id, name }])
-						}}
-					/>
-					<Combobox
-						placeholder="Artigos..."
-						inputMessage='Buscar por "Artigos"'
-						values={artigos
-							.filter(({ id }) => !artigosSelected.some(p => p.id === id))
-							.map(({ id, name }) => ({
-								label: name,
-								id,
-							}))}
-						onSelect={(id, name) => {
-							setArtigosSelected(prev => [...prev, { id, name }])
-						}}
 					/>
 
 					<CheckboxField
@@ -181,27 +100,6 @@ export function SheetFilterFlashcards({ title }: { title: string }) {
 								name="Lei: "
 								items={leisSelected}
 								setItems={setLeisSelected}
-							/>
-						) : null}
-						{titulosSelected.length ? (
-							<FilteredItem
-								name="Título: "
-								items={titulosSelected}
-								setItems={setTitulosSelected}
-							/>
-						) : null}
-						{capitulosSelected.length ? (
-							<FilteredItem
-								name="Capítulo: "
-								items={capitulosSelected}
-								setItems={setCapitulosSelected}
-							/>
-						) : null}
-						{artigosSelected.length ? (
-							<FilteredItem
-								name="Artigo: "
-								items={artigosSelected}
-								setItems={setArtigosSelected}
 							/>
 						) : null}
 					</div>
