@@ -1,5 +1,11 @@
-import { parseWithZod } from '@conform-to/zod'
+import { useForm, getFormProps, getInputProps } from '@conform-to/react'
+import { getZodConstraint, parseWithZod } from '@conform-to/zod'
 import { invariantResponse } from '@epic-web/invariant'
+import {
+	Dialog as DialogHeadless,
+	DialogBackdrop as DialogBackdropHeadless,
+	DialogPanel as DialogPanelHeadless,
+} from '@headlessui/react'
 import { animated, useSpring, useSprings } from '@react-spring/web'
 import {
 	type LoaderFunctionArgs,
@@ -19,8 +25,10 @@ import {
 	useFetcher,
 } from '@remix-run/react'
 import localForage from 'localforage'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
+import { TextareaField, ErrorList } from '#app/components/forms'
+import { Button } from '#app/components/ui/button'
 import {
 	Dialog,
 	DialogTrigger,
@@ -32,25 +40,29 @@ import {
 import { Icon } from '#app/components/ui/icon'
 import frenteFlashcard from '#app/components/ui/img/frente-flashcard.jpeg'
 import versoFlashcard from '#app/components/ui/img/verso-flashcard.jpeg'
+import { StatusButton } from '#app/components/ui/status-button'
 import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
+import { cn, useDoubleCheck, useIsPending } from '#app/utils/misc'
+import { createToastHeaders } from '#app/utils/toast.server'
 import { SheetFilterFlashcards } from './__filtro-flashcards'
-import { buscarFlashcards } from './flashcards.server'
+import { buscarFlashcards, notifyErrorFlashcard } from './flashcards.server'
+
+type FlashcardsActionArgs = {
+	request: Request
+	userId: string
+	formData: FormData
+}
 
 const favoriteFlashcardSchema = z.object({
-	intent: z.literal('favoritar'),
 	id: z.string(),
 	favorite: z.coerce.boolean(),
 })
 const answerFlashcardSchema = z.object({
-	intent: z.literal('answer'),
 	id: z.string(),
 	answer: z.enum(['sabia', 'nao_sabia', 'duvida']),
 })
-const flashcardSChema = z.discriminatedUnion('intent', [
-	favoriteFlashcardSchema,
-	answerFlashcardSchema,
-])
+
 export async function loader({ request, params }: LoaderFunctionArgs) {
 	const userId = await requireUserId(request)
 	const comboId = params.comboId
@@ -151,20 +163,22 @@ export async function clientLoader({
 }
 clientLoader.hydrate = true
 
+const intentAnswer = 'answer'
+const intentFavorite = 'favoritar'
+const ignorarFlashcardIntent = 'ignorarFlashcard'
+const notifyErrorIntent = 'notifyError'
 export async function action({ request }: ActionFunctionArgs) {
 	const userId = await requireUserId(request)
 	const form = await request.formData()
+	const { intent } = Object.fromEntries(form)
 
-	const submission = parseWithZod(form, {
-		schema: flashcardSChema,
-	})
-
-	if (submission.status !== 'success') {
-		return json({ result: submission.reply() }, { status: 400 })
-	}
-
-	const { intent } = submission.value
-	if (intent === 'answer') {
+	if (intent === intentAnswer) {
+		const submission = parseWithZod(form, {
+			schema: answerFlashcardSchema,
+		})
+		if (submission.status !== 'success') {
+			return json({ result: submission.reply() }, { status: 400 })
+		}
 		const { id, answer } = submission.value
 		await prisma.flashcardUserAnswers.create({
 			data: { answer, flashcardId: id, userId },
@@ -172,8 +186,15 @@ export async function action({ request }: ActionFunctionArgs) {
 		return json({ result: submission.reply() })
 	}
 
-	if (intent === 'favoritar') {
+	if (intent === intentFavorite) {
+		const submission = parseWithZod(form, {
+			schema: favoriteFlashcardSchema,
+		})
+		if (submission.status !== 'success') {
+			return json({ result: submission.reply() }, { status: 400 })
+		}
 		const { id, favorite } = submission.value
+
 		const exists = await prisma.flashcardUserFavorites.findFirst({
 			where: { flashcardId: id, userId },
 		})
@@ -192,7 +213,15 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 	}
 
-	return json({})
+	if (intent === notifyErrorIntent) {
+		return reportErrorFlashcardAction({ request, userId, formData: form })
+	}
+
+	if (intent === ignorarFlashcardIntent) {
+		return ignorarFlashcardAction({ request, userId, formData: form })
+	}
+
+	throw new Response(`Invalid intent "${intent}"`, { status: 400 })
 }
 
 export async function clientAction({
@@ -202,7 +231,7 @@ export async function clientAction({
 	const form = await request.clone().formData()
 	const values = Object.fromEntries(form)
 
-	if (values.intent === 'answer') {
+	if (values.intent === intentAnswer) {
 		const { id } = values
 		const cachedData = (await localForage.getItem(cachedKeyData)) as any
 		if (cachedData && Array.isArray(cachedData.flashcards)) {
@@ -213,7 +242,7 @@ export async function clientAction({
 		return serverAction()
 	}
 
-	if (values.intent === 'favoritar') {
+	if (values.intent === intentFavorite) {
 		const { id, favorite } = values
 		const cachedData = (await localForage.getItem(cachedKeyData)) as any
 		if (cachedData && Array.isArray(cachedData.flashcards)) {
@@ -223,6 +252,19 @@ export async function clientAction({
 				favorite,
 			}
 			await localForage.setItem(cachedKeyData, cachedData)
+		}
+	}
+
+	if (values.intent === ignorarFlashcardIntent) {
+		const { id } = values
+		const cachedData = (await localForage.getItem(cachedKeyData)) as any
+		if (cachedData && Array.isArray(cachedData.flashcards)) {
+			const index = cachedData.flashcards.findIndex((f: any) => f.id === id)
+
+			await localForage.setItem(
+				cachedKeyData,
+				cachedData.flashcards.slice(index, 1),
+			)
 		}
 	}
 
@@ -271,7 +313,7 @@ function Deck() {
 
 		setTimeout(() => {
 			submit(
-				{ intent: 'answer', id, answer },
+				{ intent: intentAnswer, id, answer },
 				{ method: 'post', navigate: false },
 			)
 		}, 600)
@@ -402,7 +444,6 @@ function Flashcard({
 		config: { mass: 5, tension: 500, friction: 80 },
 	})
 
-	let fetcher = useFetcher()
 	let [search] = useSearchParams()
 	const navigation = useNavigation()
 	let isPeding =
@@ -410,12 +451,29 @@ function Flashcard({
 
 	const { type } = useParams()
 
+	function borderColor() {
+		if (type === 'know') {
+			return '#DAEBD1'
+		}
+
+		if (type === 'doubt') {
+			return 'rgb(168 85 247 / 0.2)'
+		}
+
+		if (type === 'noknow') {
+			return '#F8D8DE'
+		}
+		return flashcard.materia.color ?? 'gray'
+	}
+
 	function returnIcon() {
 		if (type === 'know') {
 			return (
 				<Icon
 					name="emoji-acertei"
-					className="h-24 w-24 rounded-full bg-[#DAEBD1] object-cover text-[#007012]"
+					className={cn(
+						'h-24 w-24 rounded-full bg-[#DAEBD1] object-cover text-[#007012]',
+					)}
 				/>
 			)
 		}
@@ -464,7 +522,7 @@ function Flashcard({
 				/>
 				<div
 					className="z-10 flex h-full w-full flex-col justify-between rounded-lg border-t-8"
-					style={{ borderColor: flashcard.materia.color ?? 'gray' }}
+					style={{ borderColor: cn(borderColor()) }}
 				>
 					<div className="mt-20 flex w-full flex-col items-center justify-center space-y-5">
 						{returnIcon()}
@@ -495,42 +553,16 @@ function Flashcard({
 				/>
 				<div
 					className="z-10 flex h-full w-full flex-col justify-between rounded-lg border-t-8"
-					style={{ borderColor: flashcard.materia.color ?? 'gray' }}
+					style={{ borderColor: cn(borderColor()) }}
 				>
-					<div className="flex w-full justify-end space-x-5 p-2">
-						<fetcher.Form method="post">
-							<input type="hidden" value={flashcard.id} name="id" readOnly />
-							<input
-								type="hidden"
-								name="favorite"
-								value={flashcard.favorite ? '' : 'yes'}
-								readOnly
-							/>
-							<button
-								type="submit"
-								name="intent"
-								value="favoritar"
-								onClick={e => e.stopPropagation()}
-							>
-								<div className="flex flex-col items-center text-primary hover:text-red-500">
-									{flashcard.favorite ? (
-										<Icon name="heart" className="h-6 w-6 text-red-500" />
-									) : (
-										<Icon name="heart-outline" className="h-6 w-6" />
-									)}
-									<span
-										className={`${flashcard.favorite ? 'text-red-500' : ''}`}
-									>
-										Favoritar
-									</span>
-								</div>
-							</button>
-						</fetcher.Form>
+					<div className="flex w-full justify-end space-x-3 p-2">
+						<IgnorarFlashcard flashcardId={flashcard.id} />
+						<ReportErrorFlashcard flashcardId={flashcard.id} />
 						<Link
 							to={`lists/${flashcard.id}?${search.toString()}`}
 							onClick={e => e.stopPropagation()}
 						>
-							<div className="flex flex-col items-center text-primary hover:brightness-150">
+							<div className="flex flex-col items-center text-primary transition-all duration-100 hover:scale-105 hover:brightness-150">
 								<Icon name="game-card" className="h-6 w-6" />
 								<span>Listas</span>
 							</div>
@@ -538,7 +570,7 @@ function Flashcard({
 						{flashcard.fundamento ? (
 							<Dialog>
 								<DialogTrigger onClick={e => e.stopPropagation()}>
-									<div className="flex cursor-pointer flex-col items-center text-primary hover:brightness-150">
+									<div className="flex cursor-pointer flex-col items-center text-primary transition-all duration-100 hover:scale-105 hover:brightness-150">
 										<Icon name="books" className="h-6 w-6" />
 										<span>Fundamento</span>
 									</div>
@@ -579,7 +611,7 @@ function Flashcard({
 									handleAnswer('sabia', flashcard.id)
 								}}
 							>
-								<div className="flex flex-col items-center hover:text-[#007012]">
+								<div className="flex flex-col items-center transition-all duration-100 hover:scale-105 hover:text-[#007012]">
 									<Icon
 										name="emoji-acertei"
 										className="h-12 w-12  rounded-full hover:bg-[#DAEBD1]"
@@ -597,7 +629,7 @@ function Flashcard({
 									handleAnswer('duvida', flashcard.id)
 								}}
 							>
-								<div className="flex flex-col items-center hover:text-primary">
+								<div className="flex flex-col items-center transition-all duration-100 hover:scale-105 hover:text-primary">
 									<div className="h-12 w-12 rounded-full hover:bg-purple-500/10">
 										<Icon name="emoji-duvida" className="h-12 w-12" />
 									</div>
@@ -613,7 +645,7 @@ function Flashcard({
 									handleAnswer('nao_sabia', flashcard.id)
 								}}
 							>
-								<div className="flex flex-col items-center hover:text-red-500 ">
+								<div className="flex flex-col items-center transition-all duration-100 hover:scale-105 hover:text-red-500">
 									<Icon
 										name="emoji-errei"
 										className="h-12 w-12 rounded-full hover:bg-[#F8D8DE]"
@@ -626,5 +658,203 @@ function Flashcard({
 				</div>
 			</animated.div>
 		</div>
+	)
+}
+
+const notifyErrorFlashcardSchema = z.object({
+	intent: z.literal(notifyErrorIntent),
+	flashcardId: z.string(),
+	message: z
+		.string({ required_error: 'Descreva o erro encontado' })
+		.min(20, { message: 'Descreva em mais de 20 caracteres o erro encontrado' })
+		.max(500, {
+			message: 'Descreva em menos de 500 caracteres o erro encontrado',
+		}),
+})
+
+async function reportErrorFlashcardAction({
+	formData,
+	userId,
+}: FlashcardsActionArgs) {
+	const submission = await parseWithZod(formData, {
+		schema: notifyErrorFlashcardSchema.superRefine(async (data, ctx) => {
+			const { flashcardId } = data
+			const existsNotify = await prisma.notifyError.findFirst({
+				where: { fixed: false, flashcardId, userId },
+			})
+			if (existsNotify) {
+				ctx.addIssue({
+					path: [''],
+					code: z.ZodIssueCode.custom,
+					message:
+						'Você já possui uma notificação de erro para este flashcard em aberto. Aguarde a verificação da equipe !',
+				})
+			}
+		}),
+		async: true,
+	})
+	if (submission.status !== 'success') {
+		return json({ result: submission.reply() }, { status: 400 })
+	}
+	const { flashcardId, message } = submission.value
+	await notifyErrorFlashcard(flashcardId, userId, message)
+	const headers = await createToastHeaders({
+		description: 'Erro notificado com sucesso',
+	})
+	return json({ result: submission.reply() }, { headers })
+}
+
+function ReportErrorFlashcard({ flashcardId }: { flashcardId: string }) {
+	const [openNotifyError, setOpenNotifyError] = useState(false)
+	const fetcher = useFetcher<typeof reportErrorFlashcardAction>()
+	const [form, fields] = useForm({
+		id: `notify-flashcard-${flashcardId}`,
+		constraint: getZodConstraint(notifyErrorFlashcardSchema),
+		lastResult: fetcher.data?.result,
+		onValidate({ formData }) {
+			return parseWithZod(formData, { schema: notifyErrorFlashcardSchema })
+		},
+		shouldRevalidate: 'onBlur',
+	})
+
+	const isPeding = useIsPending({ state: 'submitting' })
+
+	useEffect(() => {
+		if (fetcher.data?.result?.status === 'success') {
+			setOpenNotifyError(false)
+		}
+	}, [fetcher.data])
+	return (
+		<>
+			<button
+				onClick={e => {
+					e.stopPropagation()
+					setOpenNotifyError(true)
+				}}
+			>
+				<div className="flex w-min cursor-pointer flex-col text-primary transition-all duration-100 hover:scale-105">
+					<Icon name="flag" className="h-6 w-6" />
+					<span className="w-max">Notificar Erro</span>
+				</div>
+			</button>
+			<DialogHeadless
+				className="relative z-10"
+				open={openNotifyError}
+				onClose={setOpenNotifyError}
+			>
+				<DialogBackdropHeadless
+					transition
+					className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in"
+				/>
+
+				<div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+					<div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+						<DialogPanelHeadless
+							transition
+							className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all data-[closed]:translate-y-4 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in sm:my-8 sm:w-full sm:max-w-sm sm:p-6 data-[closed]:sm:translate-y-0 data-[closed]:sm:scale-95"
+						>
+							<div>
+								<fetcher.Form
+									method="post"
+									{...getFormProps(form)}
+									className="space-y-1"
+								>
+									<TextareaField
+										labelProps={{
+											children: 'Descreva o erro encontrado',
+										}}
+										textareaProps={{
+											...getInputProps(fields.message, { type: 'text' }),
+										}}
+										errors={fields.message.errors}
+									/>
+									<ErrorList errors={form.errors} id={form.errorId} />
+									<input
+										type="hidden"
+										name="flashcardId"
+										value={flashcardId}
+										readOnly
+									/>
+									<input
+										type="hidden"
+										name="intent"
+										value={notifyErrorIntent}
+										readOnly
+									/>
+									<div className="flex space-x-2">
+										<StatusButton status={isPeding ? 'pending' : 'idle'}>
+											{isPeding ? 'Enviando...' : 'Enviar'}
+										</StatusButton>
+										<Button
+											variant="destructive"
+											type="button"
+											onClick={() => setOpenNotifyError(false)}
+										>
+											Cancelar
+										</Button>
+									</div>
+								</fetcher.Form>
+							</div>
+						</DialogPanelHeadless>
+					</div>
+				</div>
+			</DialogHeadless>
+		</>
+	)
+}
+
+async function ignorarFlashcardAction({
+	formData,
+	request,
+	userId,
+}: FlashcardsActionArgs) {
+	const values = Object.fromEntries(formData)
+
+	const id = String(values.id)
+
+	const exists = await prisma.flashcardIgnore.findFirst({
+		where: { flashcardId: id, userId },
+	})
+	if (!exists) {
+		await prisma.flashcardIgnore.create({
+			data: { flashcardId: id, userId },
+		})
+	}
+	return json(
+		{ result: 'sucess' },
+		{
+			headers: await createToastHeaders({
+				title: 'Flashcard movido para sua lixeira',
+				description: 'O flashcard não será mais exibido para você',
+			}),
+		},
+	)
+}
+function IgnorarFlashcard({ flashcardId }: { flashcardId: string }) {
+	const fetcher = useFetcher()
+	const dc = useDoubleCheck()
+
+	return (
+		<fetcher.Form method="POST">
+			<input type="hidden" hidden value={flashcardId} readOnly name="id" />
+			<button
+				{...dc.getButtonProps({
+					type: 'submit',
+					name: 'intent',
+					value: ignorarFlashcardIntent,
+					onClick: e => e.stopPropagation(),
+				})}
+				disabled={fetcher.state !== 'idle'}
+				className={cn(
+					'flex flex-col items-center transition-all duration-100 hover:scale-105',
+					dc.doubleCheck
+						? 'rounded-md bg-red-500 p-1 text-white'
+						: 'text-red-500 hover:text-red-700',
+				)}
+			>
+				<Icon name="trash" className="h-6 w-6" />
+				<span> {dc.doubleCheck ? `Tem Certeza?` : `Remover`}</span>
+			</button>
+		</fetcher.Form>
 	)
 }

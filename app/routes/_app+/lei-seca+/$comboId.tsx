@@ -16,7 +16,6 @@ import {
 } from '@remix-run/node'
 import {
 	Form,
-	Link,
 	useFetcher,
 	useLoaderData,
 	useSearchParams,
@@ -28,6 +27,7 @@ import { CheckboxField, ErrorList, TextareaField } from '#app/components/forms'
 import { Button } from '#app/components/ui/button'
 import { Icon } from '#app/components/ui/icon'
 import { MultiCombobox } from '#app/components/ui/multi-combobox'
+import { Pagination } from '#app/components/ui/pagination'
 import {
 	Sheet,
 	SheetContent,
@@ -290,7 +290,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		schema: schemaQuiz.superRefine(async (data, ctx) => {
 			if (data.intent === 'notifyError') {
 				const { quizId } = data
-				const existsNotify = await prisma.notifyErrorQuiz.findFirst({
+				const existsNotify = await prisma.notifyError.findFirst({
 					where: { fixed: false, quizId, userId },
 				})
 				if (existsNotify) {
@@ -470,11 +470,6 @@ export default function LeiSecaComboId() {
 	>(searchCargos)
 
 	const page = Number(searchParams.get('page')) || 1
-	function nextPage() {
-		const params = new URLSearchParams(searchParams)
-		params.set('page', (page + 1).toString())
-		return '?' + params.toString()
-	}
 
 	useEffect(() => {
 		if (formRef.current) {
@@ -700,18 +695,13 @@ export default function LeiSecaComboId() {
 							/>
 						))}
 					</ul>
+					{}
 					<div className="mt-2">
-						<div className="flex items-center justify-end">
-							{page * PAGE_SIZE < count ? (
-								<Link to={nextPage()}>
-									<Button>Próxima página</Button>
-								</Link>
-							) : (
-								<span className="text-xl font-bold text-primary">
-									{count > 0 ? 'Última página...' : ''}
-								</span>
-							)}
-						</div>
+						<Pagination
+							totalRegisters={count}
+							registerPerPage={PAGE_SIZE}
+							currentPage={page}
+						/>
 					</div>
 				</div>
 			)}

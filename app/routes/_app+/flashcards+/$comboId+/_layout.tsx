@@ -84,6 +84,10 @@ export default function Layout() {
 					<span className="font-bold text-primary">Favoritados</span>
 					<span className="text-gray-400">{favorite}</span>
 				</div>
+				<div className="flex flex-col">
+					<span className="font-bold text-primary">Excluídos</span>
+					<span className="text-gray-400">{10}</span>
+				</div>
 			</div>
 			<div className="flex-1">
 				<Outlet />

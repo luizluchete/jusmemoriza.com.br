@@ -28,8 +28,9 @@ model User {
   flashcardsFavorites FlashcardUserFavorites[]
   flashcardAnswers    FlashcardUserAnswers[]
   lists               ListsUser[]
-  NotifyErrorQuiz     NotifyErrorQuiz[]        @relation(name: "user")
-  fixedBy             NotifyErrorQuiz[]        @relation(name: "fixedBy")
+  notifyErrors        NotifyError[]            @relation(name: "user")
+  fixedBy             NotifyError[]            @relation(name: "fixedBy")
+  FlashcardIgnore     FlashcardIgnore[]
 
   @@map("users")
 }
@@ -255,25 +256,25 @@ model Artigo {
 }
 
 model Quiz {
-  id              String              @id @default(cuid())
-  status          Boolean             @default(true)
-  enunciado       String
-  comentario      String
-  fundamento      String?
-  tags            String?
-  verdadeiro      Boolean
-  ano             Int?
-  artigoId        String
-  bancaId         String?
-  cargoId         String?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  artigo          Artigo              @relation(fields: [artigoId], references: [id])
-  banca           Banca?              @relation(fields: [bancaId], references: [id])
-  cargo           Cargo?              @relation(fields: [cargoId], references: [id])
-  userResults     QuizUserResults[]
-  userFavorites   QuizUserFavorites[]
-  NotifyErrorQuiz NotifyErrorQuiz[]
+  id            String              @id @default(cuid())
+  status        Boolean             @default(true)
+  enunciado     String
+  comentario    String
+  fundamento    String?
+  tags          String?
+  verdadeiro    Boolean
+  ano           Int?
+  artigoId      String
+  bancaId       String?
+  cargoId       String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  artigo        Artigo              @relation(fields: [artigoId], references: [id])
+  banca         Banca?              @relation(fields: [bancaId], references: [id])
+  cargo         Cargo?              @relation(fields: [cargoId], references: [id])
+  userResults   QuizUserResults[]
+  userFavorites QuizUserFavorites[]
+  notifyErrors  NotifyError[]
 
   @@index([artigoId])
   @@index([bancaId, cargoId])
@@ -307,21 +308,23 @@ model QuizUserFavorites {
 }
 
 model Flashcard {
-  id             String                   @id @default(cuid())
-  status         Boolean                  @default(true)
-  titulo         String?
-  frente         String
-  verso          String
-  fundamento     String?
-  artigoId       String
-  artigo         Artigo                   @relation(fields: [artigoId], references: [id])
-  dificuldade    String?
-  tipo           String?
-  createdAt      DateTime                 @default(now())
-  updatedAt      DateTime                 @updatedAt
-  usersFavorites FlashcardUserFavorites[]
-  userAnswers    FlashcardUserAnswers[]
-  listsUsers     ListsUsersFlashcards[]
+  id              String                   @id @default(cuid())
+  status          Boolean                  @default(true)
+  titulo          String?
+  frente          String
+  verso           String
+  fundamento      String?
+  artigoId        String
+  artigo          Artigo                   @relation(fields: [artigoId], references: [id])
+  dificuldade     String?
+  tipo            String?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  usersFavorites  FlashcardUserFavorites[]
+  userAnswers     FlashcardUserAnswers[]
+  listsUsers      ListsUsersFlashcards[]
+  notifyerrors    NotifyError[]
+  FlashcardIgnore FlashcardIgnore[]
 }
 
 model FlashcardUserFavorites {
@@ -415,9 +418,10 @@ model LeisOnCombos {
   @@index([comboId])
 }
 
-model NotifyErrorQuiz {
+model NotifyError {
   id           String   @id @default(cuid())
-  quizId       String
+  quizId       String?
+  flashcardId  String?
   userId       String
   userMessage  String
   fixedMessage String?
@@ -425,9 +429,22 @@ model NotifyErrorQuiz {
   fixedById    String?
   createdAt    DateTime @default(now())
 
-  quiz    Quiz  @relation(fields: [quizId], references: [id])
-  user    User  @relation("user", fields: [userId], references: [id])
-  fixedBy User? @relation("fixedBy", fields: [fixedById], references: [id])
+  quiz      Quiz?      @relation(fields: [quizId], references: [id])
+  flashcard Flashcard? @relation(fields: [flashcardId], references: [id])
+  user      User       @relation("user", fields: [userId], references: [id])
+  fixedBy   User?      @relation("fixedBy", fields: [fixedById], references: [id])
+
+  @@index([userId])
+}
+
+model FlashcardIgnore {
+  id          String   @id @default(cuid())
+  flashcardId String
+  userId      String
+  createdAt   DateTime @default(now())
+
+  flashcard Flashcard @relation(fields: [flashcardId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }

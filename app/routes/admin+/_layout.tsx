@@ -27,7 +27,7 @@ export default function () {
 		{ name: 'Flashcards', href: '/admin/flashcards' },
 		{ name: 'Combos', href: '/admin/combos' },
 		{ name: 'Importações', href: '/admin/import' },
-		{ name: 'Notificações Quizzes', href: '/admin/notify-quizzes' },
+		{ name: 'Errors reportados', href: '/admin/notify-errors' },
 		{ name: 'Modo Usuário', href: '/home' },
 	]
 	return (

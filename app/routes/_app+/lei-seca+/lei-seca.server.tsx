@@ -16,7 +16,7 @@ export async function notifyErrorQuiz(
 		})
 		if (!user) return false
 		const quiz = await prisma.quiz.findFirst({ where: { id: quizId } })
-		await prisma.notifyErrorQuiz.create({
+		await prisma.notifyError.create({
 			data: { userMessage: message, quizId, userId },
 		})
 		const response = await sendEmail({

@@ -1,5 +1,7 @@
 import { Prisma } from '@prisma/client'
+import { getGlobalParams } from '#app/utils/config.server'
 import { prisma } from '#app/utils/db.server'
+import { sendEmail } from '#app/utils/email.server'
 
 type Input = {
 	tipo?: string
@@ -45,6 +47,9 @@ export async function buscaRatingDoCombo(comboId: string, userId: string) {
      and exists (select 1 from "LeisOnCombos" loc
                     where loc."leiId" = leis.id
                  and loc."comboId" = ${comboId})
+	and not exists (select 1 from "FlashcardIgnore" 
+		where "FlashcardIgnore"."flashcardId" = f.id
+		  and "FlashcardIgnore"."userId" = ${userId})
                      
 `
 	return (Number(query[0].sabia) / Number(query[0].total)) * 100
@@ -134,6 +139,9 @@ export async function countFlashcards({
        ${whereCapitulo}
        ${whereArtigo}
        ${whereFavorite}
+	   and not exists (select 1 from "FlashcardIgnore" 
+		where "FlashcardIgnore"."flashcardId" = f.id
+		  and "FlashcardIgnore"."userId" = ${userId})
        and exists (select 1 from "LeisOnCombos" loc
      	   		        where loc."leiId" = leis.id
      				      and loc."comboId" = ${comboId})
@@ -199,7 +207,9 @@ export async function buscarFlashcards({
                                                                 where fuf."flashcardId" = f.id
                                                                   and fuf."userId" = ${userId})`
 		: Prisma.empty
-
+	const whereIgnoreFlashcard = Prisma.sql`and not exists (select 1 from "FlashcardIgnore" 
+														where "FlashcardIgnore"."flashcardId" = f.id
+														  and "FlashcardIgnore"."userId" = ${userId})`
 	if (tipoQuery === 'initial') {
 		const query = await prisma.$queryRaw<any[]>`
     select f.id,
@@ -230,6 +240,7 @@ export async function buscarFlashcards({
        ${whereCapitulo}
        ${whereArtigo}
        ${whereFavorite}
+	   ${whereIgnoreFlashcard}
        and exists (select 1 from "LeisOnCombos" loc
      	   		        where loc."leiId" = leis.id
      				          and loc."comboId" = ${comboId})
@@ -283,6 +294,7 @@ select f.id,
        ${whereCapitulo}
        ${whereArtigo}
        ${whereFavorite}
+	   ${whereIgnoreFlashcard}
        and exists (select 1 from "LeisOnCombos" loc
      	   		        where loc."leiId" = leis.id
      				          and loc."comboId" = ${comboId})
@@ -305,4 +317,48 @@ select f.id,
 		lei: { name: String(flashcard.lei) },
 		favorite: !!flashcard.favorite,
 	}))
+}
+
+export async function notifyErrorFlashcard(
+	flashcardId: string,
+	userId: string,
+	message: string,
+) {
+	const configs = await getGlobalParams()
+	if (configs && configs.notifyEmail) {
+		const notifyEmail = configs.notifyEmail
+		const user = await prisma.user.findFirst({
+			select: { name: true, email: true },
+			where: { id: userId },
+		})
+		if (!user) return false
+		const flashcard = await prisma.flashcard.findFirst({
+			where: { id: flashcardId },
+		})
+		await prisma.notifyError.create({
+			data: { userMessage: message, flashcardId, userId },
+		})
+		const response = await sendEmail({
+			subject: 'Erro em FLASHCARD reportado por usuário',
+			to: notifyEmail,
+			react: (
+				<div>
+					<h1>Erro em FLASHCARD reportado por usuário</h1>
+					<p>
+						Usuário: {user.name} ({user.email})
+					</p>
+					<p>Mensagem: {message}</p>
+					<p>frente: {flashcard?.frente}</p>
+					<p>verso: {flashcard?.verso}</p>
+					<p>fundamento: {flashcard?.fundamento}</p>
+					<p>foi incluido no sistema para verificação !</p>
+				</div>
+			),
+		})
+
+		if (response.status === 'success') {
+			return true
+		}
+	}
+	return false
 }

@@ -7,6 +7,7 @@ const navigation = [
 	{ name: 'Lei Seca', href: '/lei-seca', icon: 'lei' },
 	{ name: 'Flashcards', href: '/flashcards', icon: 'game-card' },
 	{ name: 'Minhas Listas', href: '/lists', icon: 'books' },
+	{ name: 'Meus Flashcards', href: '/mycards', icon: 'books' },
 	{ name: 'Estatísticas', href: '/statistics', icon: 'chart-curve' },
 ]
 
