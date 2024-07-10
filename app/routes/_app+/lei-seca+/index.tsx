@@ -85,28 +85,30 @@ export default function LeiSeca() {
 								to={combo.id}
 								prefetch="intent"
 								key={combo.id}
-								className="relative transition-all duration-300 ease-in-out hover:brightness-95"
+								className="relative transition-all duration-300 ease-in-out hover:scale-105 hover:brightness-95"
 							>
-								<div className="absolute right-3 top-3 text-xs text-gray-500">
-									Questões Adaptadas
-								</div>
-								<div className="flex h-full w-full cursor-pointer flex-col space-y-8 rounded-md border bg-white px-5 py-8 shadow-md">
-									<div
-										className="flex h-24 w-24 items-center justify-center rounded-full p-4"
-										style={{ backgroundColor: combo.color ?? 'gray' }}
-									>
-										<img
-											className="h-full w-full rounded-full object-cover"
-											src={getComboImgSrc(combo.image?.id)}
-											alt={combo.name}
-										/>
+								<div className="flex h-full w-full transition-all duration-300 hover:scale-105">
+									<div className="absolute right-3 top-3 text-xs text-gray-500">
+										Questões Adaptadas
 									</div>
+									<div className="flex h-full w-full cursor-pointer flex-col space-y-8 rounded-md border bg-white px-5 py-8 shadow-md">
+										<div
+											className="flex h-24 w-24 items-center justify-center rounded-full p-4"
+											style={{ backgroundColor: combo.color ?? 'gray' }}
+										>
+											<img
+												className="h-full w-full rounded-full object-cover"
+												src={getComboImgSrc(combo.image?.id)}
+												alt={combo.name}
+											/>
+										</div>
 
-									<div>
-										<h1 className="text-xl font-bold">{combo.name}</h1>
-										<span className="text-justify text-xs leading-none text-gray-500">
-											{combo.description}
-										</span>
+										<div>
+											<h1 className="text-xl font-bold">{combo.name}</h1>
+											<span className="text-justify text-xs leading-none text-gray-500">
+												{combo.description}
+											</span>
+										</div>
 									</div>
 								</div>
 							</Link>

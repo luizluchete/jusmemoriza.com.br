@@ -74,9 +74,9 @@ export default function Index() {
 								to={`${combo.id}/type/initial`}
 								prefetch="intent"
 								key={combo.id}
-								className=" transition-all duration-300 ease-in-out hover:brightness-95"
+								className=" transition-all duration-300 ease-in-out hover:scale-110 hover:brightness-95"
 							>
-								<div className="flex h-60 w-full cursor-pointer flex-col space-y-8 rounded-md border bg-white p-5 shadow-md">
+								<div className="flex h-60 w-full cursor-pointer flex-col space-y-8 rounded-md border bg-white p-5 shadow-md transition-all duration-300 hover:scale-105">
 									<div className="flex w-full justify-end">
 										<Icon
 											name="cards"

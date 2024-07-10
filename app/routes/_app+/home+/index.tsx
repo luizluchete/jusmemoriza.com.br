@@ -68,7 +68,7 @@ export default function () {
 					<ul className="grid w-full grid-cols-2 gap-5 lg:grid-cols-4">
 						<li>
 							<Link to="/lei-seca">
-								<div className="flex w-full max-w-xs cursor-pointer flex-col items-start rounded-3xl bg-primary p-4 py-6 shadow-sm shadow-primary">
+								<div className="flex w-full max-w-xs cursor-pointer flex-col items-start rounded-3xl bg-primary p-4 py-6 shadow-sm shadow-primary duration-300 hover:scale-105">
 									<div className="flex w-full  justify-between">
 										<img
 											src={leiSecaIcon}
@@ -82,7 +82,7 @@ export default function () {
 						</li>
 						<li>
 							<Link to="/flashcards">
-								<div className="flex w-full max-w-xs cursor-pointer flex-col items-start rounded-3xl bg-primary p-4 py-6 shadow-sm shadow-primary">
+								<div className="flex w-full max-w-xs cursor-pointer flex-col items-start rounded-3xl bg-primary p-4 py-6 shadow-sm shadow-primary duration-300 hover:scale-105">
 									<div className="flex w-full  justify-between">
 										<img
 											src={flashcardsIcon}
@@ -98,7 +98,7 @@ export default function () {
 						</li>
 						<li>
 							<Link to="/lists">
-								<div className="flex w-full max-w-xs cursor-pointer flex-col items-start rounded-3xl bg-primary p-4 py-6 shadow-sm shadow-primary">
+								<div className="flex w-full max-w-xs cursor-pointer flex-col items-start rounded-3xl bg-primary p-4 py-6 shadow-sm shadow-primary duration-300 hover:scale-105">
 									<div className="flex w-full  justify-between">
 										<img
 											src={minhasListasIcon}
@@ -114,7 +114,7 @@ export default function () {
 						</li>
 						<li>
 							<Link to="/statistics">
-								<div className="flex w-full max-w-xs cursor-pointer flex-col items-start rounded-3xl bg-primary p-4 py-6 shadow-sm shadow-primary">
+								<div className="flex w-full max-w-xs cursor-pointer flex-col items-start rounded-3xl bg-primary p-4 py-6 shadow-sm shadow-primary duration-300 hover:scale-105">
 									<div className="flex w-full  justify-between">
 										<img
 											src={estatisticasIcon}

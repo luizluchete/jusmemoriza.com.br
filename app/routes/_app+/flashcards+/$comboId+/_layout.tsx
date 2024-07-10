@@ -29,8 +29,19 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		where: { id: comboId },
 	})
 
+	const promiseCountIgnored = prisma.flashcardIgnore.count({
+		where: {
+			userId,
+			flashcard: {
+				artigo: {
+					capitulo: { titulo: { lei: { combosLeis: { some: { comboId } } } } },
+				},
+			},
+		},
+	})
+
 	invariantResponse(combo, 'ComboId is required', { status: 404 })
-	const [{ duvida, favorite, naoSabia, sabia, total }, rating] =
+	const [{ duvida, favorite, naoSabia, sabia, total }, rating, ignored] =
 		await Promise.all([
 			countFlashcards({
 				userId,
@@ -43,6 +54,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 				tituloId,
 			}),
 			buscaRatingDoCombo(comboId, userId),
+			promiseCountIgnored,
 		])
 
 	return json({
@@ -54,12 +66,22 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		combo,
 		user,
 		rating,
+		ignored,
 	})
 }
 
 export default function Layout() {
-	let { total, combo, user, duvida, naoSabia, sabia, favorite, rating } =
-		useLoaderData<typeof loader>()
+	let {
+		total,
+		combo,
+		user,
+		duvida,
+		naoSabia,
+		sabia,
+		favorite,
+		rating,
+		ignored,
+	} = useLoaderData<typeof loader>()
 
 	const [searchParams] = useSearchParams()
 
@@ -86,7 +108,7 @@ export default function Layout() {
 				</div>
 				<div className="flex flex-col">
 					<span className="font-bold text-primary">Excluídos</span>
-					<span className="text-gray-400">{10}</span>
+					<span className="text-gray-400">{ignored}</span>
 				</div>
 			</div>
 			<div className="flex-1">
@@ -113,7 +135,10 @@ export default function Layout() {
 				</div>
 				<div className="hidden flex-col xl:flex">
 					<Link to={`type/know?${getSearchParams()}`}>
-						<button id="card-sabia" className="w-full">
+						<button
+							id="card-sabia"
+							className="w-full transition-all duration-200 hover:scale-105"
+						>
 							<div className="mt-5 flex h-20 cursor-pointer items-center justify-around rounded-2xl bg-white shadow-xl hover:brightness-90">
 								<div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#DAEBD1] font-bold text-[#007012]">
 									{sabia}
@@ -129,7 +154,10 @@ export default function Layout() {
 						</button>
 					</Link>
 					<Link to={`type/noknow?${getSearchParams()}`}>
-						<button id="card-nao-sabia" className="w-full">
+						<button
+							id="card-nao-sabia"
+							className="w-full transition-all duration-200 hover:scale-105"
+						>
 							<div className="mt-2 flex h-20 cursor-pointer items-center justify-around rounded-2xl bg-white shadow-xl hover:brightness-90">
 								<div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-300 font-bold text-red-500">
 									{naoSabia}
@@ -144,7 +172,10 @@ export default function Layout() {
 						</button>
 					</Link>
 					<Link to={`type/doubt?${getSearchParams()}`}>
-						<button id="card-duvida" className="w-full">
+						<button
+							id="card-duvida"
+							className="w-full transition-all duration-200 hover:scale-105"
+						>
 							<div className="mt-2 flex h-20 cursor-pointer items-center justify-around rounded-2xl bg-white shadow-xl hover:brightness-90">
 								<div className="flex h-11 w-11 items-center justify-center rounded-full bg-purple-500/10 font-bold text-primary">
 									{duvida}
@@ -162,7 +193,7 @@ export default function Layout() {
 						</button>
 					</Link>
 					<Link to={`type/initial?${getSearchParams()}`}>
-						<button className="w-full">
+						<button className="w-full transition-all duration-200 hover:scale-105">
 							<div className="mt-2 flex h-20 cursor-pointer items-center justify-around rounded-2xl bg-white shadow-xl hover:brightness-90">
 								<span className="font-bold text-primary">
 									Baralho Principal
