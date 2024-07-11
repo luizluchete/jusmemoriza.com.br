@@ -31,6 +31,7 @@ model User {
   notifyErrors        NotifyError[]            @relation(name: "user")
   fixedBy             NotifyError[]            @relation(name: "fixedBy")
   FlashcardIgnore     FlashcardIgnore[]
+  UserFlashcard       UserFlashcard[]
 
   @@map("users")
 }
@@ -456,4 +457,14 @@ model Config {
   updatedAt   DateTime @updatedAt
 
   @@map("configs")
+}
+
+model UserFlashcard {
+  id        String   @id @default(cuid())
+  frente    String
+  verso     String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

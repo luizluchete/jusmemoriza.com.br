@@ -31,7 +31,7 @@ export const flashcardSchemaEditor = z.object({
 	fundamento: z.string().optional(),
 	status: z.coerce.boolean().optional(),
 	tipo: z.enum(['jurisprudencia', 'doutrina', 'lei']).optional(),
-	dificuldade: z.enum(['facil', 'media', 'dificil']).optional(),
+	dificuldade: z.enum(['facil', 'media', 'dificil', 'instagram']).optional(),
 })
 
 export function FlashcardEditor({
@@ -61,7 +61,7 @@ export function FlashcardEditor({
 	const isPending = useIsPending()
 	const searchFormSubmit = (e: ChangeEvent<HTMLSelectElement>) =>
 		submit(e.currentTarget.form, { replace: true })
-
+	console.log({ flashcard })
 	const [form, fields] = useForm({
 		id: 'form-flashcard-editor',
 		shouldRevalidate: 'onBlur',
@@ -80,7 +80,6 @@ export function FlashcardEditor({
 			return parseWithZod(formData, { schema: flashcardSchemaEditor })
 		},
 	})
-
 	return (
 		<div>
 			<Form className="flex flex-col space-y-1" replace={true}>
@@ -202,17 +201,23 @@ export function FlashcardEditor({
 						<SelectItem value="facil">Fácil</SelectItem>
 						<SelectItem value="media">Média</SelectItem>
 						<SelectItem value="dificil">Difícil</SelectItem>
+						<SelectItem value="instagram">Instagram</SelectItem>
 					</SelectContent>
+					<ErrorList
+						errors={fields.dificuldade.errors}
+						id={fields.dificuldade.errorId}
+					/>
 				</Select>
 				<Select {...getInputProps(fields.tipo, { type: 'text' })}>
 					<SelectTrigger className="w-[180px]">
 						<SelectValue placeholder="Tipo" />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem value="facil">Lei</SelectItem>
+						<SelectItem value="lei">Lei</SelectItem>
 						<SelectItem value="jurisprudencia">Jurisprudência</SelectItem>
 						<SelectItem value="doutrina">Doutrina</SelectItem>
 					</SelectContent>
+					<ErrorList errors={fields.tipo.errors} id={fields.tipo.errorId} />
 				</Select>
 				<CheckboxField
 					labelProps={{ children: 'status' }}
