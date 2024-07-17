@@ -227,7 +227,8 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		//verifica se existe as bancas e cargos, se existir já preenche o id senão retorna erro
-
+		let errorsBancas = ''
+		let errorCargos = ''
 		const finalQUizzes = await Promise.all(
 			quizWithArtigo.map(async quiz => {
 				let bancaId
@@ -238,10 +239,10 @@ export async function action({ request }: ActionFunctionArgs) {
 						where: { name: { equals: quiz.banca, mode: 'insensitive' } },
 					})
 					if (!banca) {
-						error = `Banca ${quiz.banca} não cadastrada`
-						throw new Error(error)
+						errorsBancas = errorsBancas + `Banca ${quiz.banca} não cadastrada\n`
+					} else {
+						bancaId = banca.id
 					}
-					bancaId = banca.id
 				}
 				if (quiz.cargo) {
 					const cargo = await prisma.cargo.findFirst({
@@ -249,14 +250,18 @@ export async function action({ request }: ActionFunctionArgs) {
 						where: { name: { equals: quiz.cargo, mode: 'insensitive' } },
 					})
 					if (!cargo) {
-						error = `Cargo ${quiz.cargo} não cadastrado`
-						throw new Error(error)
+						errorCargos = errorCargos + `Cargo ${quiz.cargo} não cadastrado\n`
+					} else {
+						cargoId = cargo.id
 					}
-					cargoId = cargo.id
 				}
 				return { ...quiz, bancaId, cargoId }
 			}),
 		)
+
+		if (errorsBancas || errorCargos) {
+			throw new Error(errorsBancas + errorCargos)
+		}
 
 		// GRAVANDO OS QUIZZES NO BANCO DE DADOS
 		await prisma.$transaction(

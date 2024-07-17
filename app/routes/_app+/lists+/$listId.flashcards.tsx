@@ -82,35 +82,34 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 				},
 			},
 		},
-		where: { id: listId, userId },
+		where: {
+			id: listId,
+			userId,
+		},
 	})
 	invariantResponse(list, 'list not found', { status: 404 })
 	return json({
 		list: {
 			id: list.id,
 			name: list.name,
-			flashcards: list.flashcards.map(({ flashcard }) => ({
-				id: flashcard.id,
-				frente: flashcard.frente,
-				verso: flashcard.verso,
-				fundamento: flashcard.fundamento,
-				artigo: {
-					name: flashcard.artigo.name,
-				},
-				capitulo: {
-					name: flashcard.artigo.capitulo.name,
-				},
-				titulo: {
-					name: flashcard.artigo.capitulo.titulo.name,
-				},
-				lei: {
-					name: flashcard.artigo.capitulo.titulo.lei.name,
-				},
-				materia: {
-					name: flashcard.artigo.capitulo.titulo.lei.materia.name,
-					color: flashcard.artigo.capitulo.titulo.lei.materia.color,
-				},
-			})),
+			flashcards: list.flashcards
+				.filter(f => !!f.flashcard)
+				.map(({ flashcard }) => {
+					if (!flashcard) return null
+					return {
+						id: flashcard.id,
+						frente: flashcard.frente,
+						verso: flashcard.verso,
+						fundamento: flashcard.fundamento,
+						lei: {
+							name: flashcard.artigo.capitulo.titulo.lei.name,
+							materia: {
+								name: flashcard.artigo.capitulo.titulo.lei.materia.name,
+								color: flashcard.artigo.capitulo.titulo.lei.materia.color,
+							},
+						},
+					}
+				}),
 		},
 	})
 }
@@ -175,11 +174,14 @@ export default function ListIdFlashcards() {
 				</span>
 			</div>
 			<CarouselContent>
-				{list.flashcards.map(flashcard => (
-					<CarouselItem key={flashcard.id}>
-						<ItemFlashcardList flashcard={flashcard} />
-					</CarouselItem>
-				))}
+				{list.flashcards.map(flashcard => {
+					if (!flashcard) return null
+					return (
+						<CarouselItem key={flashcard.id}>
+							<ItemFlashcardList flashcard={flashcard} />
+						</CarouselItem>
+					)
+				})}
 			</CarouselContent>
 			<CarouselNext />
 			<CarouselPrevious />
@@ -188,18 +190,21 @@ export default function ListIdFlashcards() {
 }
 
 function ItemFlashcardList({
-	flashcard: { frente, verso, materia, lei, id, fundamento },
+	flashcard: { frente, verso, lei, id, fundamento },
 }: {
 	flashcard: {
 		id: string
 		frente: string
 		verso: string
 		fundamento?: string | null
-		materia: {
+
+		lei: {
 			name: string
-			color?: string | null
+			materia: {
+				name: string
+				color?: string | null
+			}
 		}
-		lei: { name: string }
 	}
 }) {
 	const [flipped, setFlipped] = useState(false)
@@ -222,12 +227,12 @@ function ItemFlashcardList({
 				/>
 				<div
 					className="z-10 flex h-full w-full flex-col justify-between rounded-lg border-t-8"
-					style={{ borderColor: materia.color ?? 'gray' }}
+					style={{ borderColor: lei.materia.color ?? 'gray' }}
 				>
 					<div className="mt-20 flex w-full flex-col items-center justify-center space-y-5">
 						<div
 							className="flex h-24 w-24 items-center justify-center rounded-full p-4 shadow-xl"
-							style={{ backgroundColor: materia.color ?? 'gray' }}
+							style={{ backgroundColor: lei.materia.color ?? 'gray' }}
 						>
 							<Icon
 								name="question"
@@ -235,7 +240,7 @@ function ItemFlashcardList({
 							/>
 						</div>
 
-						<h1 className="text-3xl font-bold">{materia.name}</h1>
+						<h1 className="text-3xl font-bold">{lei.materia.name}</h1>
 						<div
 							className="flex-1 overflow-auto px-5 text-justify text-xl text-gray-600"
 							dangerouslySetInnerHTML={{ __html: frente }}
@@ -261,7 +266,7 @@ function ItemFlashcardList({
 				/>
 				<div
 					className="z-10 flex h-full w-full flex-col justify-between rounded-lg border-t-8"
-					style={{ borderColor: materia.color ?? 'gray' }}
+					style={{ borderColor: lei.materia.color ?? 'gray' }}
 				>
 					<div className="flex w-full items-center justify-end space-x-5 p-2">
 						<RemoveFlashcardList flashcardId={id} />
@@ -414,17 +419,13 @@ async function removeListAction({
 }: MyListsActionArgs) {
 	const values = Object.fromEntries(formData)
 	const id = String(values.id)
-	console.log({ values })
 	const exists = await prisma.listsUsersFlashcards.findFirst({
 		where: { flashcardId: id, list: { userId, id: listId } },
 	})
 	if (exists) {
 		await prisma.listsUsersFlashcards.delete({
 			where: {
-				listId_flashcardId: {
-					flashcardId: exists.flashcardId,
-					listId: exists.listId,
-				},
+				id: exists.id,
 			},
 		})
 		let headers = await createToastHeaders({

@@ -15,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './popover'
 
 type ComboBoxProps = {
 	options?: { label: string; id: string }[]
+	side?: 'top' | 'bottom'
 	selectedValues?: { label: string; id: string }[]
 	placeholder?: string
 	notFoundMessage?: string
@@ -23,7 +24,7 @@ type ComboBoxProps = {
 		React.SetStateAction<
 			{
 				id: string
-				name: string
+				label: string
 			}[]
 		>
 	>
@@ -35,6 +36,7 @@ export function MultiCombobox({
 	notFoundMessage,
 	selectedValues = [],
 	setSelectedValues,
+	side = 'bottom',
 }: ComboBoxProps) {
 	const [open, setOpen] = useState(false)
 
@@ -45,7 +47,7 @@ export function MultiCombobox({
 				if (isSelected) {
 					return prevSelected.filter(item => item.id !== id)
 				}
-				return [...prevSelected, { id, name: label }]
+				return [...prevSelected, { id, label }]
 			})
 		}
 	}
@@ -80,14 +82,14 @@ export function MultiCombobox({
 						/>
 					</Button>
 				</PopoverTrigger>
-				<PopoverContent className="w-full">
+				<PopoverContent className="w-full" side={side}>
 					<Command>
 						<CommandInput
 							placeholder="Busca rápida"
 							onChangeCapture={e => e.stopPropagation()}
 						/>
 						<CommandEmpty>{notFoundMessage || 'Nada encontrado'}</CommandEmpty>
-						<CommandList className="max-w-80">
+						<CommandList>
 							<CommandGroup>
 								{options.map(item => (
 									<CommandItem
@@ -110,7 +112,7 @@ export function MultiCombobox({
 													)}
 												/>
 											</div>
-											<span className="opacity-80">{item.label}</span>
+											<span className="text-wrap opacity-80">{item.label}</span>
 										</div>
 									</CommandItem>
 								))}

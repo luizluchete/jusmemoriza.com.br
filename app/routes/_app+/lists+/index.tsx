@@ -7,7 +7,19 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	const userId = await requireUserId(request)
 
 	const lists = await prisma.listsUser.findMany({
-		select: { id: true, name: true, _count: { select: { flashcards: true } } },
+		select: {
+			id: true,
+			name: true,
+			_count: {
+				select: {
+					flashcards: {
+						where: {
+							NOT: { OR: [{ flashcardId: '' }, { flashcardId: null }] },
+						},
+					},
+				},
+			},
+		},
 		where: { userId },
 	})
 

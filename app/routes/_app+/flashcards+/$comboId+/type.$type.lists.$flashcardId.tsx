@@ -101,7 +101,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		}
 		if (exists && !add) {
 			await prisma.listsUsersFlashcards.delete({
-				where: { listId_flashcardId: { flashcardId, listId } },
+				where: { id: exists.id },
 			})
 			return json({ result: submission.reply() })
 		}

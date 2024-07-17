@@ -29,8 +29,12 @@ export function SheetFilterFlashcards({ title }: { title: string }) {
 	const leiId = searchParams.getAll('leiId')
 	const searchMaterias = materias.filter(({ id }) => materiaId.includes(id))
 	const searchLeis = leis.filter(({ id }) => leiId.includes(id))
-	const [materiasSelected, setMateriasSelected] = useState(searchMaterias)
-	const [leisSelected, setLeisSelected] = useState(searchLeis)
+	const [materiasSelected, setMateriasSelected] = useState(
+		searchMaterias.map(({ id, name }) => ({ id, label: name })),
+	)
+	const [leisSelected, setLeisSelected] = useState(
+		searchLeis.map(({ id, name }) => ({ id, label: name })),
+	)
 
 	useEffect(() => {
 		if (formRef.current) {
@@ -68,10 +72,7 @@ export function SheetFilterFlashcards({ title }: { title: string }) {
 							label: name,
 							id,
 						}))}
-						selectedValues={materiasSelected.map(({ id, name }) => ({
-							label: name,
-							id,
-						}))}
+						selectedValues={materiasSelected}
 						setSelectedValues={setMateriasSelected}
 					/>
 
@@ -82,10 +83,7 @@ export function SheetFilterFlashcards({ title }: { title: string }) {
 							label: name,
 							id,
 						}))}
-						selectedValues={leisSelected.map(({ id, name }) => ({
-							label: name,
-							id,
-						}))}
+						selectedValues={leisSelected}
 						setSelectedValues={setLeisSelected}
 					/>
 
@@ -131,12 +129,12 @@ function FilteredItem({
 	setItems,
 	name,
 }: {
-	items: { id: string; name: string }[]
+	items: { id: string; label: string }[]
 	setItems: React.Dispatch<
 		React.SetStateAction<
 			{
 				id: string
-				name: string
+				label: string
 			}[]
 		>
 	>
@@ -154,12 +152,12 @@ function FilteredItem({
 				<span className="font-semibold">{name}</span>
 			</div>
 			<div className="flex-start flex flex-col space-y-0.5">
-				{items.map(({ id, name }) => (
+				{items.map(({ id, label }) => (
 					<div
 						key={id}
 						className="flex max-w-max items-center space-x-0.5 rounded-md bg-gray-50 px-1 py-0.5 text-[10px]"
 					>
-						<span>{name}</span>
+						<span>{label}</span>
 						<button
 							onClick={() => setItems(prev => prev.filter(p => p.id !== id))}
 						>

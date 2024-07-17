@@ -200,15 +200,16 @@ model Materia {
 }
 
 model Lei {
-  id         String         @id @default(cuid())
-  name       String
-  materiaId  String
-  materia    Materia        @relation(fields: [materiaId], references: [id])
-  status     Boolean        @default(true)
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-  titulos    Titulo[]
-  combosLeis LeisOnCombos[]
+  id            String          @id @default(cuid())
+  name          String
+  materiaId     String
+  materia       Materia         @relation(fields: [materiaId], references: [id])
+  status        Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  titulos       Titulo[]
+  combosLeis    LeisOnCombos[]
+  UserFlashcard UserFlashcard[]
 
   @@map("leis")
 }
@@ -395,14 +396,16 @@ model ListsUser {
 }
 
 model ListsUsersFlashcards {
-  listId      String
-  flashcardId String
-  createdAt   DateTime @default(now())
+  id            String   @id @default(cuid())
+  listId        String
+  flashcardId   String?
+  myflashcardId String?
+  createdAt     DateTime @default(now())
 
-  list      ListsUser @relation(fields: [listId], references: [id])
-  flashcard Flashcard @relation(fields: [flashcardId], references: [id])
+  list        ListsUser      @relation(fields: [listId], references: [id])
+  flashcard   Flashcard?     @relation(fields: [flashcardId], references: [id])
+  myflashcard UserFlashcard? @relation(fields: [myflashcardId], references: [id])
 
-  @@id([listId, flashcardId])
   @@index([listId])
 }
 
@@ -460,11 +463,14 @@ model Config {
 }
 
 model UserFlashcard {
-  id        String   @id @default(cuid())
+  id        String                 @id @default(cuid())
   frente    String
   verso     String
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  leiId     String
+  user      User                   @relation(fields: [userId], references: [id])
+  lei       Lei                    @relation(fields: [leiId], references: [id])
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+  userList  ListsUsersFlashcards[]
 }

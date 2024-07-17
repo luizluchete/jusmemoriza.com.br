@@ -390,82 +390,82 @@ export default function LeiSecaComboId() {
 
 	const searchMaterias = materias
 		.filter(({ id }) => materiaId.includes(id))
-		.map(({ id, name }) => ({ id, name }))
+		.map(({ id, name }) => ({ id, label: name }))
 
 	const searchLeis = leis
 		? leis
 				.filter(({ id }) => leiId.includes(id))
-				.map(({ id, name }) => ({ id, name }))
+				.map(({ id, name }) => ({ id, label: name }))
 		: []
 
 	const searchTitulos = titulos
 		? titulos
 				.filter(({ id }) => tituloId.includes(id))
-				.map(({ id, name }) => ({ id, name }))
+				.map(({ id, name }) => ({ id, label: name }))
 		: []
 
 	const searchCapitulos = capitulos
 		? capitulos
 				.filter(({ id }) => capituloId.includes(id))
-				.map(({ id, name }) => ({ id, name }))
+				.map(({ id, name }) => ({ id, label: name }))
 		: []
 
 	const searchArtigos = artigos
 		? artigos
 				.filter(({ id }) => artigoId.includes(id))
-				.map(({ id, name }) => ({ id, name }))
+				.map(({ id, name }) => ({ id, label: name }))
 		: []
 
 	const searchBancas = bancas
 		.filter(({ id }) => bancaId.includes(id))
-		.map(({ id, name }) => ({ id, name }))
+		.map(({ id, name }) => ({ id, label: name }))
 	const searchCargos = cargos
 		.filter(({ id }) => cargoId.includes(id))
-		.map(({ id, name }) => ({ id, name }))
+		.map(({ id, name }) => ({ id, label: name }))
 
 	const formRef = useRef<HTMLFormElement>(null)
 
 	const [materiasSelected, setMateriasSelected] = useState<
 		{
 			id: string
-			name: string
+			label: string
 		}[]
 	>(searchMaterias)
 	const [leisSelected, setLeisSelected] = useState<
 		{
 			id: string
-			name: string
+			label: string
 		}[]
 	>(searchLeis)
 	const [titulosSelected, setTitulosSelected] = useState<
 		{
 			id: string
-			name: string
+			label: string
 		}[]
 	>(searchTitulos)
 	const [capitulosSelected, setCapitulosSelected] = useState<
 		{
 			id: string
-			name: string
+			label: string
 		}[]
 	>(searchCapitulos)
 
 	const [artigosSelected, setArtigosSelected] = useState<
 		{
 			id: string
-			name: string
+			label: string
 		}[]
 	>(searchArtigos)
 	const [bancasSelected, setbancasSelected] = useState<
 		{
 			id: string
-			name: string
+			label: string
 		}[]
 	>(searchBancas)
 	const [cargosSelected, setCargosSelected] = useState<
 		{
 			id: string
-			name: string
+			label: string
 		}[]
 	>(searchCargos)
 
@@ -516,10 +516,7 @@ export default function LeiSecaComboId() {
 										label: name,
 										id,
 									}))}
-									selectedValues={materiasSelected.map(({ id, name }) => ({
-										label: name,
-										id,
-									}))}
+									selectedValues={materiasSelected}
 									setSelectedValues={setMateriasSelected}
 								/>
 
@@ -530,10 +527,7 @@ export default function LeiSecaComboId() {
 										label: name,
 										id,
 									}))}
-									selectedValues={leisSelected.map(({ id, name }) => ({
-										label: name,
-										id,
-									}))}
+									selectedValues={leisSelected}
 									setSelectedValues={setLeisSelected}
 								/>
 
@@ -544,10 +538,7 @@ export default function LeiSecaComboId() {
 										label: name,
 										id,
 									}))}
-									selectedValues={titulosSelected.map(({ id, name }) => ({
-										label: name,
-										id,
-									}))}
+									selectedValues={titulosSelected}
 									setSelectedValues={setTitulosSelected}
 								/>
 								<MultiCombobox
@@ -557,10 +548,7 @@ export default function LeiSecaComboId() {
 										label: name,
 										id,
 									}))}
-									selectedValues={capitulosSelected.map(({ id, name }) => ({
-										label: name,
-										id,
-									}))}
+									selectedValues={capitulosSelected}
 									setSelectedValues={setCapitulosSelected}
 								/>
 
@@ -571,10 +559,7 @@ export default function LeiSecaComboId() {
 										label: name,
 										id,
 									}))}
-									selectedValues={artigosSelected.map(({ id, name }) => ({
-										label: name,
-										id,
-									}))}
+									selectedValues={artigosSelected}
 									setSelectedValues={setArtigosSelected}
 								/>
 
@@ -1001,12 +986,12 @@ function FilteredItem({
 	setItems,
 	name,
 }: {
-	items: { id: string; name: string }[]
+	items: { id: string; label: string }[]
 	setItems: React.Dispatch<
 		React.SetStateAction<
 			{
 				id: string
-				name: string
+				label: string
 			}[]
 		>
 	>
@@ -1024,12 +1009,12 @@ function FilteredItem({
 				<span className="font-semibold">{name}</span>
 			</div>
 			<div className="flex-start flex flex-col space-y-0.5">
-				{items.map(({ id, name }) => (
+				{items.map(({ id, label }) => (
 					<div
 						key={id}
 						className="flex max-w-max items-center space-x-0.5 rounded-md bg-gray-50 px-1 py-0.5 text-[10px]"
 					>
-						<span>{name}</span>
+						<span>{label}</span>
 						<button
 							onClick={() => setItems(prev => prev.filter(p => p.id !== id))}
 						>
