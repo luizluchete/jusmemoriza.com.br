@@ -239,12 +239,7 @@ export async function action({ request }: ActionFunctionArgs) {
 						where: { name: { equals: quiz.banca, mode: 'insensitive' } },
 					})
 					if (!banca) {
-						const exists = errorsBancas.find(
-							error => error === `Banca ${quiz.banca} não cadastrada\n`,
-						)
-						if (!exists) {
-							errorsBancas.push(`Banca ${quiz.banca} não cadastrada\n`)
-						}
+						errorsBancas.push(`Banca ${quiz.banca} não cadastrada\n`)
 					} else {
 						bancaId = banca.id
 					}
@@ -255,12 +250,7 @@ export async function action({ request }: ActionFunctionArgs) {
 						where: { name: { equals: quiz.cargo, mode: 'insensitive' } },
 					})
 					if (!cargo) {
-						const exists = errorCargos.find(
-							error => error === `Cargo ${quiz.cargo} não cadastrado\n`,
-						)
-						if (!exists) {
-							errorCargos.push(`Cargo ${quiz.banca} não cadastrado\n`)
-						}
+						errorCargos.push(`Cargo ${quiz.cargo} não cadastrado\n`)
 					} else {
 						cargoId = cargo.id
 					}
