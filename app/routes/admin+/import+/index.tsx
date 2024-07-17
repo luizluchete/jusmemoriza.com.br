@@ -227,8 +227,8 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		//verifica se existe as bancas e cargos, se existir já preenche o id senão retorna erro
-		let errorsBancas = ''
-		let errorCargos = ''
+		let errorsBancas: string[] = []
+		let errorCargos: string[] = []
 		const finalQUizzes = await Promise.all(
 			quizWithArtigo.map(async quiz => {
 				let bancaId
@@ -239,7 +239,7 @@ export async function action({ request }: ActionFunctionArgs) {
 						where: { name: { equals: quiz.banca, mode: 'insensitive' } },
 					})
 					if (!banca) {
-						errorsBancas = errorsBancas + `Banca ${quiz.banca} não cadastrada\n`
+						errorsBancas.push(`Banca ${quiz.banca} não cadastrada\n`)
 					} else {
 						bancaId = banca.id
 					}
@@ -250,7 +250,7 @@ export async function action({ request }: ActionFunctionArgs) {
 						where: { name: { equals: quiz.cargo, mode: 'insensitive' } },
 					})
 					if (!cargo) {
-						errorCargos = errorCargos + `Cargo ${quiz.cargo} não cadastrado\n`
+						errorCargos.push(`Cargo ${quiz.banca} não cadastrado\n`)
 					} else {
 						cargoId = cargo.id
 					}
@@ -259,8 +259,15 @@ export async function action({ request }: ActionFunctionArgs) {
 			}),
 		)
 
-		if (errorsBancas || errorCargos) {
-			throw new Error(errorsBancas + errorCargos)
+		if (errorsBancas.length || errorCargos.length) {
+			return json(
+				{
+					result: submission.reply({
+						formErrors: [...errorsBancas, ...errorCargos],
+					}),
+				},
+				{ status: 400 },
+			)
 		}
 
 		// GRAVANDO OS QUIZZES NO BANCO DE DADOS
