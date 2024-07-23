@@ -2,7 +2,7 @@ import { animated, useSpring } from '@react-spring/web'
 import {
 	type LoaderFunctionArgs,
 	json,
-	ActionFunctionArgs,
+	type ActionFunctionArgs,
 } from '@remix-run/node'
 import { Link, Outlet, useFetcher, useLoaderData } from '@remix-run/react'
 import { useEffect, useState } from 'react'
@@ -21,6 +21,7 @@ import versoFlashcard from '#app/components/ui/img/verso-flashcard.jpeg'
 import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
 import { cn, useDoubleCheck } from '#app/utils/misc.js'
+import { createToastHeaders } from '#app/utils/toast.server.js'
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const userId = await requireUserId(request)
@@ -39,7 +40,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 const excluirMyFlashcardIntent = 'excluirMyFlashcard'
 export async function action({ request }: ActionFunctionArgs) {
-	return json({})
+	const userId = await requireUserId(request)
+	const formData = await request.formData()
+	const intent = String(formData.get('intent'))
+	if (intent === excluirMyFlashcardIntent) {
+		return excluirMyFlashcardAction({ formData, userId })
+	}
+	return json({ message: 'invalid intent' }, { status: 400 })
 }
 
 export default function Index() {
@@ -58,36 +65,41 @@ export default function Index() {
 		<>
 			<Outlet />
 			<div className="flex">
-				<div>
+				<div className="min-w-fit">
 					<Link to="new">
 						<Button>Novo Flashcard</Button>
 					</Link>
 				</div>
-
-				<Carousel
-					setApi={setApi}
-					className="mx-auto max-w-md flex-1"
-					opts={{ dragFree: false }}
-				>
-					<div className="my-1 flex flex-col rounded-md border px-2 py-1 shadow-md">
-						<h1 className="font-medium">Seus Flashcards</h1>
-						<span className="text-center text-xl font-bold">
-							<span className="text-3xl">{index + 1}</span> /{' '}
-							{myFlashcards.length}
-						</span>
+				{myFlashcards.length ? (
+					<Carousel
+						setApi={setApi}
+						className="mx-auto max-w-md flex-1"
+						opts={{ dragFree: false }}
+					>
+						<div className="my-1 flex flex-col rounded-md border px-2 py-1 shadow-md">
+							<h1 className="font-medium">Seus Flashcards</h1>
+							<span className="text-center text-xl font-bold">
+								<span className="text-3xl">{index + 1}</span> /{' '}
+								{myFlashcards.length}
+							</span>
+						</div>
+						<CarouselContent>
+							{myFlashcards.map(flashcard => {
+								return (
+									<CarouselItem key={flashcard.id}>
+										<MyFlashcard flashcard={flashcard} />
+									</CarouselItem>
+								)
+							})}
+						</CarouselContent>
+						<CarouselNext />
+						<CarouselPrevious />
+					</Carousel>
+				) : (
+					<div className="flex w-full items-center justify-center ">
+						<span className="mx-auto">nenhum flashcard proprio cadastrado</span>
 					</div>
-					<CarouselContent>
-						{myFlashcards.map(flashcard => {
-							return (
-								<CarouselItem key={flashcard.id}>
-									<MyFlashcard flashcard={flashcard} />
-								</CarouselItem>
-							)
-						})}
-					</CarouselContent>
-					<CarouselNext />
-					<CarouselPrevious />
-				</Carousel>
+				)}
 			</div>
 		</>
 	)
@@ -182,6 +194,33 @@ function MyFlashcard({
 				</div>
 			</animated.div>
 		</div>
+	)
+}
+
+async function excluirMyFlashcardAction({
+	formData,
+	userId,
+}: {
+	userId: string
+	formData: FormData
+}) {
+	const flashcardId = String(formData.get('id'))
+	const exists = await prisma.userFlashcard.findFirst({
+		where: {
+			id: flashcardId,
+			userId,
+		},
+	})
+	if (exists) {
+		await prisma.userFlashcard.delete({ where: { id: exists.id } })
+	}
+	return json(
+		{ result: 'sucess' },
+		{
+			headers: await createToastHeaders({
+				description: 'Flashcard excluído com sucesso',
+			}),
+		},
 	)
 }
 
