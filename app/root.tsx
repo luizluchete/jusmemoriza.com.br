@@ -160,8 +160,9 @@ function Document({
 	env?: Record<string, string>
 	allowIndexing?: boolean
 }) {
+	let themeClass = 'light' // fixo por enquanto até implementar o tema dark
 	return (
-		<html lang="pt-BR" className={`${theme} h-full overflow-x-hidden`}>
+		<html lang="pt-BR" className={`${themeClass} h-full overflow-x-hidden`}>
 			<head>
 				<ClientHintCheck nonce={nonce} />
 				<Meta />
