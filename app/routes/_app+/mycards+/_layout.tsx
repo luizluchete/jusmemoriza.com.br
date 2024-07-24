@@ -97,7 +97,7 @@ export default function Index() {
 					</Carousel>
 				) : (
 					<div className="flex w-full items-center justify-center ">
-						<span className="mx-auto">nenhum flashcard proprio cadastrado</span>
+						<span className="mx-auto">Nenhum flashcard cadastrado</span>
 					</div>
 				)}
 			</div>

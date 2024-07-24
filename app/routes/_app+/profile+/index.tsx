@@ -29,6 +29,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			},
 		},
 	})
+	const purchases = await prisma.purchasesUser.findMany({
+		select: {
+			id: true,
+			name: true,
+			plan: true,
+			status: true,
+			purchaseAt: true,
+			expiresAt: true,
+			refundedAt: true,
+		},
+		where: { email: user.email },
+	})
 
 	const password = await prisma.password.findUnique({
 		select: { userId: true },
@@ -37,6 +49,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	return json({
 		user,
 		hasPassword: Boolean(password),
+		purchases,
 	})
 }
 
@@ -53,6 +66,29 @@ export async function action({ request }: ActionFunctionArgs) {
 		default: {
 			throw new Response(`Invalid intent "${intent}"`, { status: 400 })
 		}
+	}
+}
+
+function StatusPlan({
+	status,
+	expiresAt,
+}: {
+	status?: string | null
+	expiresAt?: string | null
+}) {
+	switch (status) {
+		case 'COMPLETED':
+			return <span className="text-green-500">Ativo</span>
+		case 'EXPIRED':
+			return <span className="text-red-500">Expirado</span>
+		case 'REFUNDED':
+			return <span className="text-yellow-500">Reembolsado</span>
+		default:
+			return expiresAt ? (
+				<span className="text-yellow-700">
+					Expira em: {new Date(expiresAt).toLocaleDateString()}
+				</span>
+			) : null
 	}
 }
 export default function () {
@@ -84,13 +120,53 @@ export default function () {
 			</div>
 			<UpdateProfile />
 			<div className="col-span-6 my-6 h-1 border-b-[1.5px] border-foreground" />
-			<div className="col-span-full flex flex-col gap-6">
-				<div>
-					<Link to={data.hasPassword ? 'password' : 'password/create'}>
-						<Icon name="dots-horizontal">
-							{data.hasPassword ? 'Alterar Senha' : 'Criar uma senha'}
-						</Icon>
-					</Link>
+			<div className="flex w-full justify-between">
+				<div className="col-span-full flex w-1/2 flex-col gap-6">
+					<div>
+						<Link to={data.hasPassword ? 'password' : 'password/create'}>
+							<Icon name="dots-horizontal">
+								{data.hasPassword ? 'Alterar Senha' : 'Criar uma senha'}
+							</Icon>
+						</Link>
+					</div>
+				</div>
+				<div className="flex  w-1/2 flex-col">
+					<ul className="divide-y divide-gray-200">
+						<table className="w-full">
+							<thead>
+								<tr className="text-left text-base font-semibold leading-6 text-gray-900">
+									<th className="px-6 py-3">Produto / Plano</th>
+
+									<th className="px-6 py-3">Data</th>
+								</tr>
+							</thead>
+							<tbody>
+								{data.purchases.map(purchase => (
+									<tr key={purchase.id}>
+										<td className="px-6 py-3 text-left">
+											<div className="flex items-center">
+												<div className="text-sm font-medium text-gray-900">
+													{purchase.name}
+												</div>
+												<div className="ml-2 text-sm text-gray-500">
+													{purchase.plan}
+												</div>
+											</div>
+											<div className="mt-1 flex items-center justify-between">
+												<StatusPlan
+													status={purchase.status}
+													expiresAt={purchase.expiresAt}
+												/>
+											</div>
+										</td>
+										<td className="px-6 py-3 text-left text-sm text-gray-500">
+											{new Date(purchase.purchaseAt).toLocaleDateString()}
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</ul>
 				</div>
 			</div>
 		</div>
@@ -162,10 +238,10 @@ function UpdateProfile() {
 
 			<ErrorList errors={form.errors} id={form.errorId} />
 
-			<div className="mt-8 flex justify-center">
+			<div className="mt-8 flex">
 				<StatusButton
 					type="submit"
-					size="wide"
+					size="default"
 					name="intent"
 					value={profileUpdateActionIntent}
 					status={fetcher.state !== 'idle' ? 'pending' : form.status ?? 'idle'}

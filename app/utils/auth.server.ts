@@ -147,7 +147,7 @@ export async function signup({
 		},
 		select: { id: true, expirationDate: true },
 	})
-
+	await createFreeAccess(email)
 	return session
 }
 
@@ -190,7 +190,7 @@ export async function signupWithConnection({
 		},
 		select: { id: true, expirationDate: true },
 	})
-
+	await createFreeAccess(email)
 	return session
 }
 
@@ -249,4 +249,18 @@ export async function verifyUserPassword(
 	}
 
 	return { id: userWithPassword.id }
+}
+
+async function createFreeAccess(email: string) {
+	const sevenDays = 1000 * 60 * 60 * 24 * 7
+	const lowerEmail = email.toLowerCase()
+	await prisma.purchasesUser.findFirst({ where: { email: lowerEmail } })
+	await prisma.purchasesUser.create({
+		data: {
+			email: lowerEmail,
+			name: 'FULL',
+			plan: 'Gratuito',
+			expiresAt: new Date(Date.now() + sevenDays),
+		},
+	})
 }
