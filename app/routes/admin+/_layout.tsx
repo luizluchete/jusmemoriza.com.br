@@ -20,6 +20,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export default function () {
 	const navigation = [
 		{ name: 'Configurações', href: '/admin' },
+		{ name: 'Usuários', href: '/admin/users' },
 		{ name: 'Matérias', href: '/admin/materias' },
 		{ name: 'Bancas', href: '/admin/bancas' },
 		{ name: 'Cargos', href: '/admin/cargos' },
