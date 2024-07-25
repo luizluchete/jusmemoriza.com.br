@@ -31,7 +31,6 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 			status: true,
 			color: true,
 			description: true,
-			urlHotmart: true,
 			leisCombos: {
 				include: {
 					lei: {
@@ -61,7 +60,6 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 			status: combo.status,
 			color: combo.color,
 			description: combo.description,
-			urlHotmart: combo.urlHotmart,
 			image: combo.image,
 			leis: combo.leisCombos.map(({ lei }) => ({
 				...lei,

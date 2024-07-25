@@ -19,8 +19,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	const { intent } = submission.value
 
 	if (intent === 'submit') {
-		const { nome, id, status, urlHotmart, color, description } =
-			submission.value
+		const { nome, id, status, color, description } = submission.value
 		const combo = await prisma.combo.upsert({
 			where: { id: id ?? '__new__' },
 			create: {
@@ -28,14 +27,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				status: status ?? false,
 				color,
 				description,
-				urlHotmart,
 			},
 			update: {
 				name: nome,
 				color,
 				description,
 				status: status ?? false,
-				urlHotmart,
 			},
 		})
 		return redirectWithToast(`/admin/combos/${combo.id}`, {
