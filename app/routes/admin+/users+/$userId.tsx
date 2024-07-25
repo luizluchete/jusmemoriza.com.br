@@ -3,7 +3,7 @@ import { type LoaderFunctionArgs, json } from '@remix-run/node'
 import { useLoaderData } from '@remix-run/react'
 import { prisma } from '#app/utils/db.server'
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
+export async function loader({ params }: LoaderFunctionArgs) {
 	const userId = params.userId
 	invariantResponse(userId, 'userId is required')
 	const user = await prisma.user.findUnique({

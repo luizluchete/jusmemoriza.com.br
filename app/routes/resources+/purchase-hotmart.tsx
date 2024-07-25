@@ -16,6 +16,7 @@ const purchaseSchema = z.object({
 	creation_date: z.number().transform(value => new Date(value)),
 	data: z.object({
 		product: z.object({
+			id: z.number(),
 			name: z.string(),
 		}),
 		buyer: z.object({
@@ -84,6 +85,7 @@ async function purchaseCompleteAction(data: PurchaseAction) {
 				name: product.name,
 				plan: subscription.plan.name,
 				productHotmart: product.name,
+				productId: product.id,
 				status: purchase.status,
 				purchaseAt: purchase.approved_date,
 			},
@@ -99,6 +101,7 @@ async function purchaseCompleteAction(data: PurchaseAction) {
 			name: product.name,
 			plan: subscription.plan.name,
 			productHotmart: product.name,
+			productId: product.id,
 			status: purchase.status,
 			purchaseAt: purchase.approved_date,
 		},

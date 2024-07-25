@@ -36,10 +36,9 @@ export const ComboFormSchema = z.discriminatedUnion('intent', [
 export function ComboEditor({
 	combo,
 }: {
-	combo?: Pick<
-		Combo,
-		'id' | 'name' | 'status' | 'urlHotmart' | 'color' | 'description'
-	> & { imageId?: string }
+	combo?: Pick<Combo, 'id' | 'name' | 'status' | 'color' | 'description'> & {
+		imageId?: string
+	}
 }) {
 	const isPending = useIsPending()
 	const actionData = useActionData<typeof action>()
@@ -52,7 +51,6 @@ export function ComboEditor({
 		},
 		defaultValue: {
 			nome: combo?.name,
-			urlHotmart: combo?.urlHotmart,
 			color: combo?.color,
 			description: combo?.description,
 			status: combo?.status,
@@ -111,13 +109,6 @@ export function ComboEditor({
 						errors={fields.color.errors}
 					/>
 				</div>
-				<Field
-					labelProps={{ children: 'URL Oferta hotmart' }}
-					inputProps={{
-						...getInputProps(fields.urlHotmart, { type: 'text' }),
-					}}
-					errors={fields.urlHotmart.errors}
-				/>
 				<Field
 					labelProps={{ children: 'Status' }}
 					inputProps={{

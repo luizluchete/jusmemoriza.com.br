@@ -32,6 +32,8 @@ model User {
   fixedBy             NotifyError[]            @relation(name: "fixedBy")
   FlashcardIgnore     FlashcardIgnore[]
   UserFlashcard       UserFlashcard[]
+  createdProduct      Product[]                @relation(name: "createdBy")
+  updatedProduct      Product[]                @relation(name: "updatedBy")
 
   @@map("users")
 }
@@ -47,6 +49,7 @@ model PurchasesUser {
   refundedAt         DateTime?
   transactionHotmart String?
   productHotmart     String?
+  productId          Int?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 }
@@ -371,16 +374,16 @@ model FlashcardUserAnswers {
 }
 
 model Combo {
-  id          String         @id @default(cuid())
+  id          String           @id @default(cuid())
   name        String
-  status      Boolean        @default(true)
-  urlHotmart  String?
+  status      Boolean          @default(true)
   color       String?
   description String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
   leisCombos  LeisOnCombos[]
   image       ComboImage?
+  products    ComboOnProduct[]
 
   @@map("combos")
 }
@@ -488,4 +491,31 @@ model UserFlashcard {
   createdAt DateTime               @default(now())
   updatedAt DateTime               @updatedAt
   userList  ListsUsersFlashcards[]
+}
+
+model Product {
+  id               String           @id @default(cuid())
+  name             String
+  description      String?
+  hotmartLink      String?
+  createdById      String
+  updatedById      String?
+  productIdHotmart Int?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  createdBy        User             @relation("createdBy", fields: [createdById], references: [id])
+  updatedBy        User?            @relation("updatedBy", fields: [updatedById], references: [id])
+  combos           ComboOnProduct[]
+}
+
+model ComboOnProduct {
+  comboId   String
+  productId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  combo   Combo   @relation(fields: [comboId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@id([comboId, productId])
 }
