@@ -1,28 +1,23 @@
-import { Link } from '@remix-run/react'
+import { json } from '@remix-run/node'
+import { Link, useLoaderData } from '@remix-run/react'
 import { Fragment } from 'react'
+import { prisma } from '#app/utils/db.server'
 import { cn } from '#app/utils/misc'
 
-const locations = [
-	{
-		name: 'Edinburgh',
-		people: [
-			{
-				name: 'Lindsay Walton',
-				title: 'Front-end Developer',
-				email: 'lindsay.walton@example.com',
-				role: 'Member',
-			},
-			{
-				name: 'Courtney Henry',
-				title: 'Designer',
-				email: 'courtney.henry@example.com',
-				role: 'Admin',
-			},
-		],
-	},
-]
+export async function loader() {
+	const products = await prisma.product.findMany({
+		select: {
+			id: true,
+			name: true,
+			combos: { select: { combo: { select: { id: true, name: true } } } },
+		},
+		orderBy: { name: 'asc' },
+	})
+	return json({ products })
+}
 
 export default function Example() {
+	const { products } = useLoaderData<typeof loader>()
 	return (
 		<div className="px-4 sm:px-6 lg:px-8">
 			<div className="sm:flex sm:items-center">
@@ -58,69 +53,53 @@ export default function Example() {
 									>
 										Produto
 									</th>
-									<th
-										scope="col"
-										className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-									>
-										Title
-									</th>
-									<th
-										scope="col"
-										className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-									>
-										Email
-									</th>
-									<th
-										scope="col"
-										className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-									>
-										Role
-									</th>
+
 									<th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-3">
 										<span className="sr-only">Edit</span>
 									</th>
 								</tr>
 							</thead>
 							<tbody className="bg-white">
-								{locations.map(location => (
-									<Fragment key={location.name}>
+								{products.map(product => (
+									<Fragment key={product.name}>
 										<tr className="border-t border-gray-200">
 											<th
 												scope="colgroup"
 												colSpan={5}
 												className="bg-gray-50 py-2 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-3"
 											>
-												{location.name}
+												{product.name}
+											</th>
+											<th className="relative whitespace-nowrap bg-gray-50 py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-3">
+												<Link
+													to={product.id}
+													className="font-bold text-primary"
+												>
+													Visualizar
+												</Link>
 											</th>
 										</tr>
-										{location.people.map((person, personIdx) => (
+										{product.combos.map(({ combo }, idx) => (
 											<tr
-												key={person.email}
+												key={combo.id}
 												className={cn(
-													personIdx === 0
-														? 'border-gray-300'
-														: 'border-gray-200',
+													idx === 0 ? 'border-gray-300' : 'border-gray-200',
 													'border-t',
 												)}
 											>
 												<td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-3">
-													{person.name}
+													{combo.name}
 												</td>
 												<td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-													{person.title}
+													{combo.name}
 												</td>
-												<td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-													{person.email}
-												</td>
-												<td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-													{person.role}
-												</td>
+
 												<td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-3">
 													<Link
-														to={person.name}
+														to={combo.name}
 														className="text-indigo-600 hover:text-indigo-900"
 													>
-														Edit<span className="sr-only">, {person.name}</span>
+														Edit<span className="sr-only">, {combo.name}</span>
 													</Link>
 												</td>
 											</tr>

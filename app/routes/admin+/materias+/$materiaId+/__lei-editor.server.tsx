@@ -15,6 +15,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			const exists = await prisma.lei.findFirst({
 				where: {
 					name: { equals: data.nome, mode: 'insensitive' },
+					materiaId: materiaId,
 					id: { not: { equals: data.id } },
 				},
 			})
