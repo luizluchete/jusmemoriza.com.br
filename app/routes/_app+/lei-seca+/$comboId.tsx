@@ -24,6 +24,17 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import { CheckboxField, ErrorList, TextareaField } from '#app/components/forms'
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from '#app/components/ui/alert-dialog'
 import { Button } from '#app/components/ui/button'
 import { Icon } from '#app/components/ui/icon'
 import { MultiCombobox } from '#app/components/ui/multi-combobox'
@@ -489,7 +500,8 @@ export default function LeiSecaComboId() {
 	return (
 		<div>
 			<div>
-				<div className="flex justify-end text-primary">
+				<div className="flex justify-between text-primary">
+					<ButtonPdf />
 					<Sheet>
 						<SheetTrigger>
 							<button>
@@ -1026,5 +1038,48 @@ function FilteredItem({
 				))}
 			</div>
 		</div>
+	)
+}
+
+function ButtonPdf() {
+	const { quizzes } = useLoaderData<typeof loader>()
+	return (
+		<AlertDialog>
+			<AlertDialogTrigger asChild>
+				<Button variant="outline">Imprimir</Button>
+			</AlertDialogTrigger>
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>
+						Gerar PDF dos quizzes selecionados
+					</AlertDialogTitle>
+					<AlertDialogDescription>
+						This action cannot be undone. This will permanently delete your
+						account and remove your data from our servers.
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel>Cancel</AlertDialogCancel>
+					<Form
+						action="/resources/quizzes-pdf"
+						target="_blank"
+						rel="noreferrer"
+					>
+						{quizzes.map(quiz => (
+							<input
+								key={quiz.id}
+								type="hidden"
+								hidden
+								readOnly
+								name="quizId"
+								value={quiz.id}
+							/>
+						))}
+
+						<AlertDialogAction type="submit">Continue</AlertDialogAction>
+					</Form>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
 	)
 }
