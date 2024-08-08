@@ -32,7 +32,6 @@ const CarouselContext = React.createContext<CarouselContextProps | null>(null)
 
 useEmblaCarousel.globalOptions = {
 	dragFree: true,
-	draggable: false,
 }
 function useCarousel() {
 	const context = React.useContext(CarouselContext)
