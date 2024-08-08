@@ -10,6 +10,15 @@ import {
 } from '@headlessui/react'
 import { type Prisma, type Quiz } from '@prisma/client'
 import {
+	Page,
+	Text,
+	View,
+	Document,
+	StyleSheet,
+	Image,
+	PDFViewer,
+} from '@react-pdf/renderer'
+import {
 	type LoaderFunctionArgs,
 	json,
 	type ActionFunctionArgs,
@@ -22,9 +31,12 @@ import {
 	useSubmit,
 } from '@remix-run/react'
 import { useEffect, useRef, useState } from 'react'
+import Html from 'react-pdf-html'
 import { z } from 'zod'
 import { CheckboxField, ErrorList, TextareaField } from '#app/components/forms'
+
 import { Button } from '#app/components/ui/button'
+import { Dialog, DialogTrigger, DialogContent } from '#app/components/ui/dialog'
 import { Icon } from '#app/components/ui/icon'
 import { MultiCombobox } from '#app/components/ui/multi-combobox'
 import { Pagination } from '#app/components/ui/pagination'
@@ -243,6 +255,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		enunciado: quiz.enunciado,
 		comentario: quiz.comentario,
 		fundamento: quiz.fundamento,
+		gabarito: quiz.verdadeiro,
 		ano: quiz.ano,
 		favorite: quiz.userFavorites.length > 0,
 		banca: quiz.banca ? { id: quiz.banca.id, name: quiz.banca.name } : null,
@@ -489,7 +502,8 @@ export default function LeiSecaComboId() {
 	return (
 		<div>
 			<div>
-				<div className="flex justify-end text-primary">
+				<div className="flex justify-between text-primary">
+					<ButtonPdf />
 					<Sheet>
 						<SheetTrigger>
 							<button>
@@ -1026,5 +1040,145 @@ function FilteredItem({
 				))}
 			</div>
 		</div>
+	)
+}
+
+function ButtonPdf() {
+	const { quizzes } = useLoaderData<typeof loader>()
+	const primaryColor = '#32297C'
+
+	const styles = StyleSheet.create({
+		textHeader: {
+			fontSize: 8,
+		},
+		page: {
+			flexDirection: 'column',
+			margin: 10,
+		},
+		headerQuiz: {
+			display: 'flex',
+			flexDirection: 'row',
+			alignItems: 'center',
+			fontSize: 14,
+			color: primaryColor,
+			fontWeight: 'bold',
+		},
+		viewEnunciado: { marginHorizontal: 25, marginVertical: 15 },
+		textEnunciado: {
+			textAlign: 'justify',
+			fontSize: 12,
+		},
+		viewAnswer: { marginHorizontal: 25, marginVertical: 15, fontSize: 12 },
+		viewAlternativas: { marginHorizontal: 25, fontSize: 12, marginBottom: 10 },
+	})
+
+	// Create Document Component
+	const MyDocument = ({ quizzes, all }: any) => (
+		<Document title="Quizzes | Jusmemoriza" author="jusmemoriza">
+			<Page size="A4" style={styles.page}>
+				<View fixed>
+					<Text style={styles.textHeader}>
+						{new Date().toLocaleString('pt-BR', {
+							timeZone: 'America/Sao_Paulo',
+						})}
+					</Text>
+					<Image
+						src="/img/logo_primary.png"
+						style={{
+							height: 50,
+							objectFit: 'contain',
+						}}
+					/>
+				</View>
+				{quizzes.map((quiz: any, index: number) => (
+					<View key={quiz.id} wrap={false}>
+						<View style={styles.headerQuiz}>
+							<View
+								style={{
+									width: 20,
+									height: 20,
+									borderWidth: 1,
+									borderColor: primaryColor,
+									justifyContent: 'center',
+									alignItems: 'center',
+									borderRadius: 5,
+									marginRight: 5,
+								}}
+							>
+								<Text>{index + 1}</Text>
+							</View>
+							<View
+								style={{
+									flexDirection: 'row',
+								}}
+							>
+								<Text
+									style={{
+										textAlign: 'justify',
+										textOverflow: 'ellipsis',
+										marginRight: 50,
+									}}
+								>
+									<Text>{quiz.materia.name} - </Text>
+									<Text>{quiz.lei.name} </Text>
+									<Text>{quiz.ano ? ` ${quiz.ano}` : ''}</Text>
+									<Text>{quiz.banca ? `  ${quiz.banca.name}` : ''}</Text>
+									<Text>{quiz.cargo ? ` ${quiz.cargo.name}` : ''}</Text>
+								</Text>
+							</View>
+						</View>
+						<View style={styles.viewEnunciado}>
+							<Html style={styles.textEnunciado}>{quiz.enunciado}</Html>
+						</View>
+
+						<View style={styles.viewAlternativas}>
+							<Text>( ) Verdadeiro </Text>
+							<Text>( ) Falso </Text>
+						</View>
+
+						{all ? (
+							<View style={styles.viewAnswer}>
+								<Text>Gabarito: {quiz.gabarito ? 'Verdadeiro' : 'Falso'} </Text>
+								<Text>
+									Comentário:{' '}
+									<Html style={styles.textEnunciado}>{quiz.comentario}</Html>
+								</Text>
+								{quiz.fundamento ? (
+									<Text>
+										Fundamento:{' '}
+										<Html style={styles.textEnunciado}>{quiz.fundamento}</Html>
+									</Text>
+								) : null}
+							</View>
+						) : null}
+					</View>
+				))}
+				<Text
+					style={{
+						position: 'absolute',
+						bottom: 30,
+						left: 0,
+						right: 30,
+						textAlign: 'right',
+						fontSize: 8,
+					}}
+					render={({ pageNumber, totalPages }) =>
+						`${pageNumber} / ${totalPages}`
+					}
+					fixed
+				/>
+			</Page>
+		</Document>
+	)
+
+	return (
+		<Dialog>
+			<DialogTrigger>Imprimir</DialogTrigger>
+			<DialogContent className="h-screen w-screen max-w-2xl p-10">
+				<PDFViewer className="h-full w-full">
+					<MyDocument quizzes={quizzes} />
+				</PDFViewer>
+			</DialogContent>
+		</Dialog>
 	)
 }
