@@ -25,9 +25,9 @@ export class GitHubProvider implements AuthProvider {
 	getAuthStrategy() {
 		return new GitHubStrategy(
 			{
-				clientId: process.env.GITHUB_CLIENT_ID,
+				clientID: process.env.GITHUB_CLIENT_ID,
 				clientSecret: process.env.GITHUB_CLIENT_SECRET,
-				redirectURI: '/auth/github/callback',
+				callbackURL: '/auth/github/callback',
 			},
 			async ({ profile }) => {
 				const email = profile.emails[0].value.trim().toLowerCase()
