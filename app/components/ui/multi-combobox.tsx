@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { cn } from '#app/utils/misc'
 import { Button } from './button'
 import {
@@ -20,6 +20,7 @@ type ComboBoxProps = {
 	placeholder?: string
 	notFoundMessage?: string
 	name?: string
+	icon?: React.ReactNode
 	setSelectedValues?: React.Dispatch<
 		React.SetStateAction<
 			{
@@ -32,6 +33,7 @@ type ComboBoxProps = {
 export function MultiCombobox({
 	name,
 	options = [],
+	icon,
 	placeholder,
 	notFoundMessage,
 	selectedValues = [],
@@ -66,9 +68,13 @@ export function MultiCombobox({
 						className="h-9 w-full justify-between"
 					>
 						<div className="flex w-full items-center justify-between">
-							<span className="text-ellipsis text-nowrap">
-								{placeholder || 'Selecione ...'}
-							</span>{' '}
+							<div className="flex space-x-2">
+								{icon ? icon : null}
+								<span className="text-ellipsis text-nowrap">
+									{placeholder || 'Selecione ...'}
+								</span>{' '}
+							</div>
+
 							{selectedValues.length > 0 ? (
 								<span className="text-ellipsis text-nowrap text-xs opacity-50">
 									{selectedValues.length} selecionado
