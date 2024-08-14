@@ -404,6 +404,8 @@ model ComboImage {
 model ListsUser {
   id         String                 @id @default(cuid())
   name       String
+  color      String?
+  icon       String?
   userId     String
   user       User                   @relation(fields: [userId], references: [id])
   createdAt  DateTime               @default(now())

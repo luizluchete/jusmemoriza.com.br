@@ -30,21 +30,21 @@ export default function Page() {
 	}
 	const { user } = useLoaderData<typeof loader>()
 	return (
-		<div className="mx-auto flex h-[800px] w-full max-w-screen-2xl justify-between ">
+		<div className="mx-auto flex h-[800px] w-full justify-around">
 			<CardFiltros />
 
 			<div
 				id="deck"
-				className="flex h-full w-[550px] flex-col justify-between overflow-hidden"
+				className="flex h-full w-5/12  flex-col justify-between overflow-hidden"
 			>
 				<div className="relative h-full ">
-					{Array.from({ length: 3 }).map((_, i) => (
+					{Array.from({ length: 5 }).map((_, i) => (
 						<div
 							key={i}
-							className={cn('absolute')}
+							className={cn('absolute flex w-full justify-center')}
 							style={{
-								top: `${i * 10}px`,
-								left: `${i * 10}px`,
+								top: `${i * 4}px`,
+								left: `${i * 4}px`,
 							}}
 						>
 							<Card />
@@ -60,7 +60,7 @@ export default function Page() {
 				</div>
 			</div>
 
-			<div className="flex h-full w-[368px] flex-col justify-between">
+			<div className="flex h-full w-1/4 min-w-96 flex-col justify-between">
 				<div className="flex items-center space-x-3 rounded-xl border border-[#B3B3B3] p-4">
 					<img
 						src={getUserImgSrc(user.image?.id)}
@@ -245,7 +245,10 @@ function Card() {
 
 function CardFiltros() {
 	return (
-		<div id="first-col" className="flex h-full w-[368px] flex-col space-y-10">
+		<div
+			id="first-col"
+			className="flex h-full w-1/4 min-w-96 flex-col space-y-10"
+		>
 			<div
 				id="filtros"
 				className="h-full w-full flex-1 space-y-10  overflow-y-auto rounded-2xl border border-gray-400 py-5"

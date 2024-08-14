@@ -27,11 +27,33 @@ import {
 	DialogTrigger,
 } from '#app/components/ui/dialog'
 import { Icon } from '#app/components/ui/icon'
+import { Label } from '#app/components/ui/label'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '#app/components/ui/select'
 import { StatusButton } from '#app/components/ui/status-button'
 import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
 import { useIsPending } from '#app/utils/misc'
 
+const cores = [
+	{ name: 'Laranja vibrante', cor: '#FF5733' },
+	{ name: 'Verde vibrante', cor: '#33FF57' },
+	{ name: 'Azul vibrante', cor: '#3357FF' },
+	{ name: 'Rosa brilhante', cor: '#FF33A1' },
+	{ name: 'Dourado', cor: '#FFD700' },
+	{ name: 'Roxo', cor: '#800080' },
+	{ name: 'Verde-água', cor: '#20B2AA' },
+	{ name: 'Laranja avermelhado', cor: '#FF4500' },
+	{ name: 'Azul Dodger', cor: '#1E90FF' },
+	{ name: 'Tomate (vermelho suave)', cor: '#FF6347' },
+]
+
+const icons = ['envelope-closed', 'heart', 'home', 'lei', 'laptop'] as const
 const schemaCreateList = z.object({
 	intent: z.literal('createList'),
 	name: z
@@ -39,6 +61,17 @@ const schemaCreateList = z.object({
 		.min(3, { message: 'Mínimo de 3 caracteres' })
 		.max(50, { message: 'Máximo 50 caracteres' })
 		.trim(),
+	color: z
+		.string()
+		.default(cores[0].cor)
+		.refine(
+			value => {
+				const cor = cores.find(c => c.cor === value)
+				return !!cor
+			},
+			{ message: 'Cor inválida' },
+		),
+	icon: z.enum(icons).default(icons[0]),
 	redirectTo: z.string().optional(),
 })
 
@@ -83,8 +116,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 	const { intent } = submission.value
 	if (intent === 'createList') {
-		const { name } = submission.value
-		await prisma.listsUser.create({ data: { name, userId } })
+		const { name, color, icon } = submission.value
+		await prisma.listsUser.create({ data: { name, userId, color, icon } })
 		return json({ result: submission.reply() })
 	}
 
@@ -116,6 +149,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		select: {
 			id: true,
 			name: true,
+			color: true,
+			icon: true,
 			flashcards: {
 				select: { flashcardId: true },
 			},
@@ -131,6 +166,7 @@ export default function FlashcardIdLists() {
 	const back = () => navigate(-1)
 	const { lists } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
+	const [color, setColor] = useState(cores[0].cor)
 
 	const isPending = useIsPending()
 
@@ -168,7 +204,7 @@ export default function FlashcardIdLists() {
 				<div className="space-y-2">
 					<hr />
 					{lists.length === 0 && <div>Nenhuma lista cadastrada</div>}
-					<ul className="max-h-80 overflow-y-auto">
+					<ul className="max-h-80 space-y-1 overflow-y-auto">
 						{lists.map(list => {
 							const hasFlashcard = !!list.flashcards.find(
 								flashcard => flashcard.flashcardId === flashcardId,
@@ -178,6 +214,8 @@ export default function FlashcardIdLists() {
 									key={list.id}
 									id={list.id}
 									name={list.name}
+									color={list.color || undefined}
+									icon={list.icon || undefined}
 									quantity={list.flashcards.length}
 									hasFlashcard={hasFlashcard}
 								/>
@@ -217,6 +255,63 @@ export default function FlashcardIdLists() {
 											...getInputProps(fields.name, { type: 'text' }),
 										}}
 									/>
+									<div>
+										<Label>Cor</Label>
+										<Select
+											onValueChange={value => setColor(value)}
+											{...getInputProps(fields.color, { type: 'text' })}
+										>
+											<SelectTrigger>
+												<SelectValue placeholder="Cor" />
+											</SelectTrigger>
+											<SelectContent>
+												{cores.map(cor => (
+													<SelectItem key={cor.cor} value={cor.cor}>
+														<div className="flex items-center space-x-2">
+															<div
+																className="h-8 w-8 rounded-full"
+																style={{ backgroundColor: cor.cor }}
+															/>
+															<span
+																className="font-bold"
+																style={{ color: cor.cor }}
+															>
+																{cor.name}
+															</span>
+														</div>
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<ErrorList errors={fields.color.errors} />
+									</div>
+
+									<div>
+										<Label>Icone</Label>
+										<Select {...getInputProps(fields.icon, { type: 'text' })}>
+											<SelectTrigger className="w-min">
+												<SelectValue placeholder="Icone" />
+											</SelectTrigger>
+											<SelectContent>
+												{icons.map(icon => (
+													<SelectItem key={icon} value={icon}>
+														<div className="flex items-center space-x-2">
+															<div
+																className="flex h-8 w-8 items-center justify-center rounded-full"
+																style={{ backgroundColor: color }}
+															>
+																<Icon
+																	name={icon}
+																	className="h-5 w-5 text-white"
+																/>
+															</div>
+														</div>
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<ErrorList errors={fields.icon.errors} />
+									</div>
 									<ErrorList errors={form.errors} />
 									<StatusButton
 										form={form.id}
@@ -243,10 +338,14 @@ function ItemFlashcardsList({
 	hasFlashcard,
 	id,
 	name,
+	color,
+	icon,
 	quantity,
 }: {
 	id: string
 	name: string
+	color?: string
+	icon?: string
 	quantity: number
 	hasFlashcard: boolean
 }) {
@@ -258,12 +357,25 @@ function ItemFlashcardsList({
 	}
 
 	return (
-		<li className="flex items-center justify-between px-6 py-1">
-			<div className="flex flex-col">
-				<span className="font-semibold text-primary">{name}</span>
-				<div className="space-x-2">
-					<span className="text-primary">Numero de flashcards:</span>
-					<span className="text-sm text-[#54595E99]">{quantity}</span>
+		<li className="flex items-center justify-between rounded-lg border border-gray-300 px-5">
+			<div className="flex items-center">
+				<div
+					className="mx-2 flex h-8 w-8 items-center justify-center rounded-full"
+					style={{ backgroundColor: color }}
+				>
+					{icon && icons.includes(icon) ? (
+						<Icon
+							name={icon as (typeof icons)[number]}
+							className="h-5 w-5 text-white"
+						/>
+					) : null}
+				</div>
+				<div className="flex flex-col">
+					<span className="font-semibold text-primary">{name}</span>
+					<div className="space-x-2">
+						<span className="text-primary">Numero de flashcards:</span>
+						<span className="text-sm text-[#54595E99]">{quantity}</span>
+					</div>
 				</div>
 			</div>
 			<fetcher.Form method="post">
@@ -278,13 +390,16 @@ function ItemFlashcardsList({
 				<button
 					type="submit"
 					name="add"
+					className="flex items-center"
 					value={!hasFlashcardOtimistic ? 'on' : ''}
 				>
 					{!hasFlashcardOtimistic ? (
-						<div className="h-7 w-7 cursor-pointer rounded border-2 border-primary hover:bg-primary/10" />
+						<div className="rounded-lg bg-green-700 px-2 py-1 text-sm font-semibold text-white hover:brightness-95">
+							Adicionar
+						</div>
 					) : (
-						<div className="flex h-7 w-7 cursor-pointer items-center justify-center rounded border-2 border-primary bg-primary hover:bg-primary/90">
-							<Icon name="check" className="h-7 w-7 text-white" />
+						<div className="rounded-lg bg-red-500 px-2 py-1 text-sm font-semibold text-white hover:brightness-95">
+							Remover
 						</div>
 					)}
 				</button>
