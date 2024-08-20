@@ -182,7 +182,7 @@ export default function FlashcardIdLists() {
 	const flashcardId = useParams().flashcardId
 	const [openCreateList, setOpenCreateList] = useState(false)
 	const submittinNewList =
-		actionData?.result?.initialValue?.intent === 'createList' &&
+		actionData?.result?.initialValue?.intent === 'user-list-editor' &&
 		actionData.result.status === 'success'
 	useEffect(() => {
 		if (submittinNewList) {

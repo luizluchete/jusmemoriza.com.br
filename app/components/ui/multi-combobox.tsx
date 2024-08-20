@@ -57,7 +57,7 @@ export function MultiCombobox({
 	return (
 		<>
 			{selectedValues.map(({ id }) => (
-				<input key={id} type="hidden" value={id} name={name} />
+				<input key={id} type="hidden" hidden value={id} name={name} />
 			))}
 			<Popover open={open} onOpenChange={setOpen}>
 				<PopoverTrigger asChild>

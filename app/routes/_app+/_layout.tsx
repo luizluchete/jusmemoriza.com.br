@@ -14,16 +14,15 @@ const navigation = [
 export default function LayoutApp() {
 	return (
 		<div>
-			<div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-52 lg:flex-col">
+			<div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
 				{/* Sidebar component, swap this element with another sidebar if you like */}
 				<div className="flex min-h-0 flex-1 flex-col rounded-r-xl bg-primary">
 					<div className="flex flex-1 flex-col overflow-y-auto pb-4 pt-5">
-						<div className="flex flex-shrink-0 items-center px-4">
+						<div className="flex flex-shrink-0 items-center justify-center px-4">
 							<img
 								src={logoBranco}
-								height={100}
-								width={300}
 								alt="Logo Jusmemoriza"
+								className="h-12 w-auto object-contain"
 							/>
 						</div>
 						<nav className="mt-5 flex-1 space-y-1 pl-3">
