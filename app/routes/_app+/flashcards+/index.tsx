@@ -1,178 +1,110 @@
-import { invariantResponse } from '@epic-web/invariant'
+import { parseWithZod } from '@conform-to/zod'
 import { animated, useSpring, useSprings } from '@react-spring/web'
-import { type LoaderFunctionArgs, json } from '@remix-run/node'
-import { useLoaderData, useSearchParams } from '@remix-run/react'
+import {
+	type ActionFunctionArgs,
+	type LoaderFunctionArgs,
+	json,
+} from '@remix-run/node'
+import {
+	type ShouldRevalidateFunction,
+	useFetcher,
+	useLoaderData,
+	useSearchParams,
+} from '@remix-run/react'
 import { useState } from 'react'
+import { z } from 'zod'
 import { Icon } from '#app/components/ui/icon'
-import { MultiCombobox } from '#app/components/ui/multi-combobox'
 import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
-import { cn, getUserImgSrc } from '#app/utils/misc'
-import { BuscaMateriasParaFiltro, countFlashcards } from './flashcards.server'
+import { cn } from '#app/utils/misc'
+import {
+	buscaLeisParaFiltro,
+	buscaMateriasParaFiltro,
+	buscarFlashcardsPadrao,
+	buscarFlashcardsPorTipo,
+	countFlashcards,
+} from './flashcards.server'
+
+//intents flashcards
+const intentAnswer = 'answer'
+// const ignorarFlashcardIntent = 'ignorarFlashcard'
+// const notifyErrorIntent = 'notifyError'
+
+// Schemas zod
+const answerFlashcardSchema = z.object({
+	id: z.string(),
+	answer: z.enum(['sabia', 'nao_sabia', 'duvida']),
+})
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const userId = await requireUserId(request)
-	const user = await prisma.user.findUnique({
-		select: {
-			name: true,
-			image: { select: { id: true } },
-		},
-		where: { id: userId },
-	})
-	if (!user) invariantResponse(user, 'User not found', { status: 404 })
+
 	const url = new URL(request.url)
+	const page = Number(url.searchParams.get('page')) || 1
+	const tipo = url.searchParams.get('type')
 	const materiaId = url.searchParams.getAll('materiaId')
-	const flashcards = await prisma.flashcard.findMany({
-		select: {
-			id: true,
-			frente: true,
-			verso: true,
-			fundamento: true,
-			artigo: {
-				select: {
-					capitulo: {
-						select: {
-							titulo: {
-								select: {
-									lei: {
-										select: {
-											name: true,
-											materia: { select: { color: true, name: true } },
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		take: 10,
-	})
-	const count = await countFlashcards({ userId })
-	const materias = await BuscaMateriasParaFiltro()
-	const mapper = flashcards.map(f => ({
-		...f,
-		materia: f.artigo.capitulo.titulo.lei.materia,
-		lei: f.artigo.capitulo.titulo.lei,
-	}))
-	return json({ user, flashcards: mapper, count, materias })
+	const leiId = url.searchParams.getAll('leiId')
+
+	const flashcards = tipo
+		? await buscarFlashcardsPorTipo({ userId, tipo, materiaId, leiId, page })
+		: await buscarFlashcardsPadrao({ userId, materiaId, leiId })
+
+	const count = await countFlashcards({ userId, materiaId, leiId })
+	const materias = await buscaMateriasParaFiltro()
+	const leis =
+		materiaId.length > 0 ? await buscaLeisParaFiltro(materiaId) : undefined
+	return json({ flashcards, count, materias, leis })
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+	const formData = await request.formData()
+	const userId = await requireUserId(request)
+	const intent = formData.get('intent')
+	if (intent === intentAnswer) {
+		return answerCardAction(formData, userId)
+	}
+	return null
+}
+
+export const shouldRevalidate: ShouldRevalidateFunction = ({
+	defaultShouldRevalidate,
+	formMethod,
+}) => {
+	if (formMethod === 'POST') return false
+	return defaultShouldRevalidate
 }
 
 export default function Page() {
-	const { user, count } = useLoaderData<typeof loader>()
-	const { duvida, naoSabia, sabia } = count
+	const [searchParams] = useSearchParams()
+	return <Deck key={`deck-${searchParams.toString()}`} />
+}
 
-	const [searchParams, setSearchParams] = useSearchParams()
-
-	function changeType(type: string) {
-		const newParams = searchParams
-		newParams.delete('page')
-		type ? newParams.set('type', type) : newParams.delete('type')
-		setSearchParams(newParams)
+async function answerCardAction(formData: FormData, userId: string) {
+	const submission = parseWithZod(formData, {
+		schema: answerFlashcardSchema,
+	})
+	if (submission.status !== 'success') {
+		return json({ result: submission.reply() }, { status: 400 })
 	}
-	function calculateAngle(rating: number) {
-		// O arco vai de -90 graus (0) a 90 graus (100)
-		const angle = (rating / 100) * 180 - 90
-		return angle
-	}
-	return (
-		<div className="mx-auto mt-5 flex h-[720px] w-full justify-around">
-			<CardFiltros />
-			<Deck key={`deck-${searchParams.toString()}`} />
-			<div className="flex h-full w-1/4 min-w-96 flex-col justify-between">
-				<div className="flex items-center space-x-3 rounded-xl border border-[#B3B3B3] p-4">
-					<img
-						src={getUserImgSrc(user.image?.id)}
-						alt="avatar"
-						className="h-9 w-9 rounded-xl object-cover"
-					/>
-					<span className="text-xl font-semibold">
-						Olá, {user?.name.split(' ')[0]}!
-					</span>
-				</div>
-
-				<div className="flex flex-col items-center justify-center space-y-10">
-					<div className="relative">
-						<div className="h-[119px] w-[238px] overflow-hidden">
-							<div className="flex h-[238px] w-[238px] items-center justify-center rounded-full bg-gradient-to-r from-[#FF5757] via-[#7E9AFB] to-[#27DD86]">
-								<div className="flex h-[212px] w-[212px] items-center justify-center rounded-full bg-white"></div>
-							</div>
-						</div>
-						<div className="absolute top-0 flex h-[180px] w-[238px] items-center justify-center  text-black">
-							<Icon
-								name="rocket"
-								className="h-12 w-12 origin-[25px_45px]"
-								style={{ transform: `rotate(${calculateAngle(50)}deg)` }}
-							/>
-						</div>
-					</div>
-
-					<div className="flex flex-col items-center">
-						<span className="text-2xl font-semibold">50% CONCLUÍDO</span>
-						<span className="text-xl font-normal">Tempo Decorrido: 13:45</span>
-					</div>
-				</div>
-
-				<div
-					onClick={() => changeType('know')}
-					className="text-semibold flex w-full cursor-pointer items-center space-x-3 rounded-xl border border-[#B3B3B3] p-4 text-xl transition-all hover:scale-105"
-				>
-					<div
-						id="card-sabia"
-						className="flex h-11 w-11 items-center justify-center rounded-md bg-[#29DB89]  text-white"
-					>
-						{sabia.toString().padStart(2, '0')}
-					</div>
-					<span className="font-semibold">Sabia</span>
-				</div>
-				<div
-					onClick={() => changeType('doubt')}
-					className="text-semibold flex w-full cursor-pointer items-center space-x-3 rounded-xl border border-[#B3B3B3] p-4 text-xl transition-all hover:scale-105"
-				>
-					<div
-						id="card-duvida"
-						className="flex h-11 w-11 items-center justify-center rounded-md bg-[#755FFF] text-white"
-					>
-						{duvida.toString().padStart(2, '0')}
-					</div>
-					<span className="font-semibold">Dúvida</span>
-				</div>
-				<div
-					onClick={() => changeType('noknow')}
-					className="text-semibold flex w-full cursor-pointer items-center space-x-3 rounded-xl border border-[#B3B3B3] p-4 text-xl transition-all hover:scale-105"
-				>
-					<div
-						id="card-nao-sabia"
-						className="flex h-11 w-11 items-center justify-center rounded-md bg-[#F75B62] text-white"
-					>
-						{naoSabia.toString().padStart(2, '0')}
-					</div>
-					<span className="font-semibold">Não Sabia</span>
-				</div>
-				<div
-					onClick={() => changeType('')}
-					className="flex w-full cursor-pointer items-center justify-center space-x-3 rounded-xl border border-[#B3B3B3] p-4 text-xl transition-all hover:scale-105"
-				>
-					<Icon name="stack-outline-light" className="h-8 w-8" />
-					<span className="font-semibold">Baralho Principal</span>
-				</div>
-			</div>
-		</div>
-	)
+	const { id, answer } = submission.value
+	await prisma.flashcardUserAnswers.create({
+		data: { answer, flashcardId: id, userId },
+	})
+	return json({ result: submission.reply() })
 }
 
 function Deck() {
 	const { flashcards } = useLoaderData<typeof loader>()
 	const [localFlashcards] = useState(flashcards)
-	const [springs, api] = useSprings(flashcards.length, i => ({
+	const [springs, api] = useSprings(localFlashcards.length, i => ({
 		from: { x: 0, scale: 1, y: -1000, opacity: 1 },
 		scale: 1,
 		x: 0,
-		y: i > 4 ? 20 : i * 4,
+		y: i > 4 ? 25 : i * 5,
 		delay: i < 4 ? i * 100 : 400,
 		config: { mass: 10, tension: 1000, friction: 300, duration: 600 },
 	}))
+	const fetcher = useFetcher<typeof answerCardAction>()
 
 	function handleAnswer(answer: string, flashcardId: string) {
 		const cardsRect = document
@@ -187,8 +119,16 @@ function Deck() {
 		const cardNaoSabia = document
 			.getElementById('card-nao-sabia')
 			?.getBoundingClientRect()
+
+		setTimeout(() => {
+			fetcher.submit(
+				{ intent: intentAnswer, id: flashcardId, answer },
+				{ method: 'post' },
+			)
+		}, 600)
+
 		api.start(i => {
-			if (flashcards[i].id !== flashcardId) return
+			if (localFlashcards[i].id !== flashcardId) return
 
 			if (cardsRect) {
 				if (answer === 'sabia') {
@@ -239,18 +179,15 @@ function Deck() {
 	}
 
 	return (
-		<div className="flex h-full w-5/12  flex-col justify-between">
+		<div className="flex h-full w-[30%] flex-col justify-between">
 			<div className="relative h-full">
-				<div className="absolute flex w-full justify-center">{api.length}</div>
 				{springs.map(({ scale, x, y }, index) => {
 					const flashcard = localFlashcards[index]
 					return (
 						<animated.div
 							id="deck-flashcards"
 							key={index}
-							className={cn(
-								'absolute flex h-[95%] w-full min-w-96 justify-center',
-							)}
+							className={cn('absolute flex h-[95%] w-full justify-center')}
 							style={{
 								x,
 								y,
@@ -285,15 +222,7 @@ type PropsCard = {
 	}
 	handleAnswer: (answer: string, flashcardId: string) => void
 }
-function Card({
-	frente,
-	fundamento,
-	id,
-	verso,
-	handleAnswer,
-	materia,
-	lei,
-}: PropsCard) {
+function Card({ frente, id, verso, handleAnswer, materia, lei }: PropsCard) {
 	const [flipped, setFlipped] = useState(false)
 	const { transform } = useSpring({
 		transform: `perspective(600px) rotateY(${flipped ? 180 : 0}deg)`,
@@ -344,7 +273,7 @@ function Card({
 	}
 
 	return (
-		<div className="relative h-full w-[484px]">
+		<div className="relative h-full w-full">
 			<animated.div
 				style={{ transform }}
 				onClick={() => setFlipped(state => !state)}
@@ -463,73 +392,6 @@ function Card({
 					</div>
 				</div>
 			</animated.div>
-		</div>
-	)
-}
-
-function CardFiltros() {
-	const { count, materias } = useLoaderData<typeof loader>()
-	const { total } = count
-
-	const [searchParams] = useSearchParams()
-	const materiaId = searchParams.getAll('materiaId')
-	const searchMaterias = materias.filter(({ id }) => materiaId.includes(id))
-	const [materiasSelected, setMateriasSelected] = useState(
-		searchMaterias.map(({ id, name }) => ({ id, label: name })),
-	)
-	return (
-		<div
-			id="first-col"
-			className="flex h-full w-1/4 min-w-96 flex-col space-y-10"
-		>
-			<div
-				id="filtros"
-				className="h-full w-full flex-1 space-y-10  overflow-y-auto rounded-2xl border border-gray-400 py-5"
-			>
-				<div className="flex w-full justify-center space-x-3">
-					<Icon name="tabler-filter" className="h-5 w-5" />
-					<span className="text-lg font-bold">Filtros</span>
-				</div>
-
-				<div className="flex w-full flex-col justify-center space-y-5 px-5">
-					<MultiCombobox
-						icon={<Icon name="single-book" className="h-5 w-5" />}
-						placeholder="Matérias"
-						name="materiaId"
-						options={materias.map(({ id, name }) => ({ id, label: name }))}
-						selectedValues={materiasSelected}
-						setSelectedValues={setMateriasSelected}
-					/>
-
-					<MultiCombobox
-						icon={<Icon name="lei" className="h-5 w-5" />}
-						placeholder="Leis"
-						name="leiId"
-						options={[]}
-						selectedValues={[]}
-						setSelectedValues={() => {}}
-					/>
-				</div>
-
-				<div className="flex w-full items-center justify-center">
-					<span className="text-center text-lg font-bold">
-						Filtros Selecionados:
-					</span>
-				</div>
-			</div>
-			<div className="flex w-full items-center justify-evenly space-x-3 rounded-xl border border-gray-400 p-4">
-				<div className="flex flex-col justify-center text-center">
-					<span className="font-semibold">Combo</span>
-					<span className="text-gray-500">Trabalho</span>
-				</div>
-				<div className="h-11 border-l-2 border-gray-400" />
-				<div className="flex flex-col justify-center text-center">
-					<span className="font-semibold">Flashcards</span>
-					<span className="text-gray-500">
-						{total.toString().padStart(2, '0')}
-					</span>
-				</div>
-			</div>
 		</div>
 	)
 }

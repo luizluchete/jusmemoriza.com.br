@@ -14,15 +14,13 @@ export default function LayoutAuth() {
 						src={backgroundImage}
 						alt="background login"
 					/>
-					<div className=" flex min-h-full flex-col items-start pt-40">
-						<img
-							src={logoBranco}
-							height={300}
-							width={900}
-							alt="Logo JusMemoriza"
-						/>
-
-						<section className="pl-20 pr-40 xl:pl-40 xl:pr-72">
+					<div className="flex min-h-full flex-col items-start pt-40">
+						<section className="space-y-10 pl-20 pr-40 xl:pl-40 xl:pr-72">
+							<img
+								src={logoBranco}
+								className="h-40 object-contain"
+								alt="Logo JusMemoriza"
+							/>
 							<h2 className="text-2xl font-normal text-white">
 								Descubra hoje a melhor maneira de PASSAR NOS MAIS DIVERSOS
 								CONCURSOS PÚBLICOS estudando de maneira simples, rápida e
