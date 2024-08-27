@@ -23,7 +23,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	const onlyFavorites = url.searchParams.get('favorite') === 'on'
 
 	const comboId = params.comboId
-	invariantResponse(comboId, 'ComboId is required', { status: 404 })
+	invariantResponse(comboId, 'ComboId is requireddd', { status: 404 })
 	const combo = await prisma.combo.findFirst({
 		select: { name: true },
 		where: { id: comboId },

@@ -144,7 +144,9 @@ function Card({ color, frente, lei, materia, verso }: CardProps) {
 						{frente}
 					</p>
 
-					<h3 className="text-xs font-semibold opacity-80">{lei}</h3>
+					<h3 className="text-center text-xs font-semibold opacity-80">
+						{lei}
+					</h3>
 				</div>
 			</animated.div>
 			<animated.div

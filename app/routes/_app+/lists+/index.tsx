@@ -1,11 +1,15 @@
+import { getFormProps, getInputProps, useForm } from '@conform-to/react'
+import { getZodConstraint, parseWithZod } from '@conform-to/zod'
 import {
 	type ActionFunctionArgs,
 	type LoaderFunctionArgs,
 	json,
 } from '@remix-run/node'
-import { useFetcher, useLoaderData } from '@remix-run/react'
-import { useState } from 'react'
-import { UserListFlashcardsEditor } from '#app/components/ui/__user-list-flashcards-editor'
+import { Link, useFetcher, useLoaderData } from '@remix-run/react'
+import { useEffect, useState } from 'react'
+
+import { z } from 'zod'
+import { ErrorList, Field } from '#app/components/forms'
 import { Button } from '#app/components/ui/button'
 import {
 	Dialog,
@@ -25,9 +29,17 @@ import {
 	DropdownMenuTrigger,
 } from '#app/components/ui/dropdown-menu'
 import { Icon } from '#app/components/ui/icon'
+import { Label } from '#app/components/ui/label'
+import {
+	SelectTrigger,
+	SelectValue,
+	SelectContent,
+	SelectItem,
+	Select,
+} from '#app/components/ui/select'
+import { StatusButton } from '#app/components/ui/status-button'
 import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
-import { userListFlashcardAction } from '#app/utils/services/user-list-flashcards.server'
 import { createToastHeaders } from '#app/utils/toast.server'
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -69,13 +81,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	const userId = await requireUserId(request)
 	const { intent } = Object.fromEntries(formData)
 	if (intent === 'user-list-editor') {
-		const submission = await userListFlashcardAction(formData, userId)
-		return json(submission, {
-			headers: await createToastHeaders({
-				description: 'Salvo com sucesso !',
-				type: 'success',
-			}),
-		})
+		return userListFlashcardAction(formData, userId)
 	}
 
 	if (intent === 'user-list-remove') {
@@ -126,27 +132,31 @@ export default function Index() {
 				</div>
 			)}
 
-			<ul className="mt-3 grid grid-cols-1 gap-y-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+			<ul className="mt-3 grid grid-cols-1 gap-y-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
 				{lists.map(list => (
-					<div key={list.id}>
-						<div className="relative flex h-28 w-full max-w-96 items-center  space-x-2 rounded-lg border border-gray-300 px-4 hover:shadow-md">
-							<div
-								className="flex h-16 w-16 items-center justify-center rounded-full"
-								style={{ backgroundColor: list.color || undefined }}
-							>
-								{list.icon ? (
-									<Icon
-										name={list.icon as keyof typeof Icon}
-										className="h-10 w-10 text-white"
-									/>
-								) : null}
+					<Link key={list.id} to={`${list.id}/flashcards`}>
+						<div
+							className="relative flex h-32 w-full max-w-96 cursor-pointer items-center space-x-2 rounded-lg border px-4 hover:shadow-md"
+							style={{ borderColor: list.color || undefined }}
+						>
+							<div className="relative flex h-20 w-20 items-center justify-center">
+								<Icon
+									name="circle-wavy-fill"
+									className="absolute h-20 w-20"
+									style={{ color: list.color || undefined }}
+								/>
+								<Icon
+									name={list.icon as keyof typeof Icon}
+									className="absolute h-10 w-10"
+								/>
 							</div>
-							<div className="flex h-full flex-1 flex-col justify-center">
-								<h3 className="text-ellipsis text-xl font-bold text-gray-700">
+
+							<div className="flex h-full w-2/3 flex-1 flex-col justify-center truncate text-ellipsis p-1">
+								<h3 className=" text-xl font-medium text-gray-700">
 									{list.name}
 								</h3>
 								<div className="flex justify-between">
-									<span className="text-gray-500">
+									<span className="font-medium text-gray-500">
 										{list.countFlashcards} flashcards
 									</span>
 								</div>
@@ -162,7 +172,7 @@ export default function Index() {
 								/>
 							</div>
 						</div>
-					</div>
+					</Link>
 				))}
 			</ul>
 		</div>
@@ -211,7 +221,7 @@ function DropdownCard({
 				</DropdownMenuContent>
 			</DropdownMenu>
 			{view === 'edit' ? (
-				<EditList list={list} />
+				<EditList list={list} setOpen={setOpen} />
 			) : view === 'remove' ? (
 				<RemoveList id={list.id} />
 			) : null}
@@ -219,11 +229,142 @@ function DropdownCard({
 	)
 }
 
+const cores = [
+	{ name: 'Laranja vibrante', cor: '#FFA8A8' },
+	{ name: 'Verde vibrante', cor: '#FF865C' },
+	{ name: 'Azul vibrante', cor: '#87CCA3' },
+	{ name: 'Rosa brilhante', cor: '#FFA5DA' },
+	{ name: 'Dourado', cor: '#FF6B6B' },
+	{ name: 'Roxo', cor: '#F46137' },
+	{ name: 'Verde-água', cor: '#B5A3E8' },
+	{ name: 'Laranja avermelhado', cor: '#FF8CC7' },
+	{ name: 'Azul Dodger', cor: '#F95757' },
+	{ name: 'Tomate (vermelho suave)', cor: '#D4F2E4' },
+	{ name: 'Tomate (vermelho suave)', cor: '#FFC076' },
+	{ name: 'Tomate (vermelho suave)', cor: '#FF9C41' },
+	{ name: 'Tomate (vermelho suave)', cor: '#FFAD86' },
+	{ name: 'Tomate (vermelho suave)', cor: '#A8E6CF' },
+	{ name: 'Tomate (vermelho suave)', cor: '#F5D14F' },
+	{ name: 'Tomate (vermelho suave)', cor: '#C4EFB8' },
+]
+
+const icons = [
+	'list-balanca',
+	'list-tribunal',
+	'list-home',
+	'list-money',
+	'list-card',
+	'list-statistics',
+	'list-calc',
+	'list-tree',
+] as const
+export const schemaUserListFlashcard = z.object({
+	id: z.string().optional(),
+	name: z
+		.string({ required_error: 'Preencha o nome' })
+		.min(3, { message: 'Mínimo de 3 caracteres' })
+		.max(50, { message: 'Máximo 50 caracteres' })
+		.trim(),
+	color: z
+		.string()
+		.default(cores[0].cor)
+		.refine(
+			value => {
+				const cor = cores.find(c => c.cor === value)
+				return !!cor
+			},
+			{ message: 'Cor inválida' },
+		),
+	icon: z.enum(icons, { message: 'Icone invalido' }).default(icons[0]),
+})
+
+async function userListFlashcardAction(formData: FormData, userId: string) {
+	const submission = await parseWithZod(formData, {
+		schema: schemaUserListFlashcard.superRefine(async (data, ctx) => {
+			const exists = await prisma.listsUser.findFirst({
+				where: {
+					userId,
+					name: { equals: data.name, mode: 'insensitive' },
+					id: { not: { equals: data.id } },
+				},
+			})
+			if (exists) {
+				ctx.addIssue({
+					path: ['name'],
+					code: z.ZodIssueCode.custom,
+					message: 'Você já tem uma lista com esse nome',
+				})
+			}
+		}),
+		async: true,
+	})
+
+	if (submission.status !== 'success') {
+		return json(
+			{ result: submission.reply() },
+			{ status: submission.status === 'error' ? 400 : 200 },
+		)
+	}
+
+	const { color, icon, name, id } = submission.value
+	await prisma.listsUser.upsert({
+		where: { id: id ?? '__new__', userId },
+		create: {
+			name,
+			color,
+			icon,
+			userId,
+		},
+		update: {
+			name,
+			color,
+			icon,
+		},
+	})
+	return json(
+		{ result: submission.reply() },
+		{
+			headers: await createToastHeaders({
+				description: 'Salvo com sucesso !',
+				type: 'success',
+			}),
+		},
+	)
+}
+
 function EditList({
 	list,
+	setOpen,
 }: {
 	list: { id: string; name: string; color?: string; icon?: string }
+	setOpen: (open: boolean) => void
 }) {
+	const fetcher = useFetcher<typeof userListFlashcardAction>()
+	const [color, setColor] = useState(list?.color || cores[0].cor)
+	const isPending = fetcher.state === 'submitting'
+	const [form, fields] = useForm({
+		id: `user-list-flashcard-editor-${list?.id}`,
+		constraint: getZodConstraint(schemaUserListFlashcard),
+		lastResult: fetcher.data?.result,
+		onValidate({ formData }) {
+			return parseWithZod(formData, { schema: schemaUserListFlashcard })
+		},
+		defaultValue: {
+			name: list?.name,
+			color: list?.color,
+			icon: list?.icon,
+		},
+		shouldRevalidate: 'onBlur',
+	})
+	const submittinNewList =
+		fetcher.state === 'idle' && fetcher.data?.result?.status === 'success'
+
+	useEffect(() => {
+		if (submittinNewList) {
+			setOpen(false)
+		}
+	}, [submittinNewList, setOpen])
+
 	return (
 		<DialogContent onClick={e => e.stopPropagation()}>
 			<DialogHeader>
@@ -232,7 +373,86 @@ function EditList({
 					Faça alterações em sua lista aqui. Clique em salvar quando terminar.
 				</DialogDescription>
 			</DialogHeader>
-			<UserListFlashcardsEditor list={list} />
+			<fetcher.Form className="space-y-3" method="post" {...getFormProps(form)}>
+				{list?.id ? (
+					<input type="hidden" hidden name="id" value={list.id} readOnly />
+				) : null}
+				<input
+					type="text"
+					hidden
+					name="intent"
+					value="user-list-editor"
+					readOnly
+				/>
+				<Field
+					labelProps={{ children: 'Nome' }}
+					errors={fields.name.errors}
+					inputProps={{
+						...getInputProps(fields.name, { type: 'text' }),
+					}}
+				/>
+				<div className="flex space-x-10">
+					<div>
+						<Label>Icone</Label>
+						<Select {...getInputProps(fields.icon, { type: 'text' })}>
+							<SelectTrigger className="w-full">
+								<SelectValue placeholder="Selecione um icone" />
+							</SelectTrigger>
+							<SelectContent>
+								{icons.map(icon => (
+									<SelectItem key={icon} value={icon}>
+										<div className="flex items-center space-x-2">
+											<div
+												className="flex h-10 w-10 items-center justify-center rounded-full p-2"
+												style={{ backgroundColor: color }}
+											>
+												<Icon
+													name={icon}
+													className="h-full w-full text-white"
+												/>
+											</div>
+										</div>
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<ErrorList errors={fields.icon.errors} />
+					</div>
+					<div>
+						<Label>Cor</Label>
+						<Select
+							onValueChange={value => setColor(value)}
+							{...getInputProps(fields.color, { type: 'text' })}
+						>
+							<SelectTrigger>
+								<SelectValue placeholder="Cor" />
+							</SelectTrigger>
+							<SelectContent>
+								{cores.map(cor => (
+									<SelectItem key={cor.cor} value={cor.cor}>
+										<div className="flex items-center space-x-2">
+											<div
+												className="h-8 w-8 rounded-full"
+												style={{ backgroundColor: cor.cor }}
+											/>
+										</div>
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<ErrorList errors={fields.color.errors} />
+					</div>
+				</div>
+				<ErrorList errors={form.errors} />
+				<StatusButton
+					form={form.id}
+					type="submit"
+					disabled={isPending}
+					status={isPending ? 'pending' : 'idle'}
+				>
+					{list?.id ? 'Salvar' : 'Criar'}
+				</StatusButton>
+			</fetcher.Form>
 		</DialogContent>
 	)
 }

@@ -52,10 +52,10 @@ export default function () {
 		return angle
 	}
 	return (
-		<div className="mx-auto mt-5 flex h-[720px] w-full justify-around">
+		<div className="mx-auto mt-10 flex h-screen max-h-[800px] min-h-[700px] w-full justify-around">
 			<CardFiltros />
 			<Outlet />
-			<div className="flex h-full w-[22%] min-w-96 flex-col justify-between">
+			<div className="flex h-full w-1/4 max-w-[384px] flex-col justify-between">
 				<div className="flex items-center space-x-3 rounded-xl border border-[#B3B3B3] p-4">
 					<img
 						src={getUserImgSrc(user.image?.id)}
@@ -148,7 +148,10 @@ function CardFiltros() {
 		searchMaterias.map(({ id, name }) => ({ id, label: name })),
 	)
 	return (
-		<div id="first-col" className="flex h-full w-[22%] flex-col space-y-10">
+		<div
+			id="first-col"
+			className="flex h-full w-1/4 max-w-[384px] flex-col space-y-10"
+		>
 			<div
 				id="filtros"
 				className="h-full w-full flex-1 space-y-10  overflow-y-auto rounded-2xl border border-gray-400 py-5"

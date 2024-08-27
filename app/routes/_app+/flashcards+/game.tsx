@@ -6,17 +6,35 @@ import {
 	json,
 } from '@remix-run/node'
 import {
+	Link,
+	Outlet,
 	type ShouldRevalidateFunction,
 	useFetcher,
 	useLoaderData,
 	useSearchParams,
 } from '@remix-run/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
+import { Button } from '#app/components/ui/button'
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from '#app/components/ui/dialog'
 import { Icon } from '#app/components/ui/icon'
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from '#app/components/ui/tooltip'
 import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
 import { cn } from '#app/utils/misc'
+import { createToastHeaders } from '#app/utils/toast.server'
 import {
 	buscaLeisParaFiltro,
 	buscaMateriasParaFiltro,
@@ -27,7 +45,7 @@ import {
 
 //intents flashcards
 const intentAnswer = 'answer'
-// const ignorarFlashcardIntent = 'ignorarFlashcard'
+const ignorarFlashcardIntent = 'ignorarFlashcard'
 // const notifyErrorIntent = 'notifyError'
 
 // Schemas zod
@@ -63,14 +81,23 @@ export async function action({ request }: ActionFunctionArgs) {
 	if (intent === intentAnswer) {
 		return answerCardAction(formData, userId)
 	}
-	return null
+
+	if (intent === ignorarFlashcardIntent) {
+		return ignorarFlashcardAction(formData, userId)
+	}
+
+	return json({ message: 'invalid intent' }, { status: 400 })
 }
 
 export const shouldRevalidate: ShouldRevalidateFunction = ({
 	defaultShouldRevalidate,
 	formMethod,
+	nextUrl,
 }) => {
 	if (formMethod === 'POST') return false
+
+	console.log('nextUrl', nextUrl)
+
 	return defaultShouldRevalidate
 }
 
@@ -96,6 +123,7 @@ async function answerCardAction(formData: FormData, userId: string) {
 function Deck() {
 	const { flashcards } = useLoaderData<typeof loader>()
 	const [localFlashcards] = useState(flashcards)
+	const [showResults, setShowResults] = useState(false)
 	const [springs, api] = useSprings(localFlashcards.length, i => ({
 		from: { x: 0, scale: 1, y: -1000, opacity: 1 },
 		scale: 1,
@@ -105,6 +133,10 @@ function Deck() {
 		config: { mass: 10, tension: 1000, friction: 300, duration: 600 },
 	}))
 	const fetcher = useFetcher<typeof answerCardAction>()
+	const [qtdeSabia, setQtdSabia] = useState(0)
+	const [qtdeNaoSabia, setQtdeNaoSabia] = useState(0)
+	const [qtdeDuvida, setQtdDuvida] = useState(0)
+	const [searchParams, setSearchParams] = useSearchParams()
 
 	function handleAnswer(answer: string, flashcardId: string) {
 		const cardsRect = document
@@ -132,6 +164,7 @@ function Deck() {
 
 			if (cardsRect) {
 				if (answer === 'sabia') {
+					setQtdSabia(qtde => qtde + 1)
 					if (cardSabiaRect) {
 						const x =
 							cardSabiaRect.x -
@@ -146,6 +179,8 @@ function Deck() {
 					}
 				}
 				if (answer === 'duvida') {
+					setQtdDuvida(qtde => qtde + 1)
+
 					if (cardDuvidaRect) {
 						const x =
 							cardDuvidaRect.x -
@@ -159,6 +194,7 @@ function Deck() {
 					}
 				}
 				if (answer === 'nao_sabia') {
+					setQtdeNaoSabia(qtde => qtde + 1)
 					if (cardNaoSabia) {
 						const x =
 							cardNaoSabia.x -
@@ -176,35 +212,79 @@ function Deck() {
 
 			return { x: 300, scale: 0 }
 		})
+
+		// Verifica se é o ultimo flashcard da pilha
+		if (localFlashcards[0].id === flashcardId) {
+			console.log('ultimo flashcard')
+			setTimeout(() => {
+				setShowResults(true)
+			}, 600)
+		}
 	}
 
 	return (
-		<div className="flex h-full w-[30%] flex-col justify-between">
-			<div className="relative h-full">
-				{springs.map(({ scale, x, y }, index) => {
-					const flashcard = localFlashcards[index]
-					return (
-						<animated.div
-							id="deck-flashcards"
-							key={index}
-							className={cn('absolute flex h-[95%] w-full justify-center')}
-							style={{
-								x,
-								y,
-								scale,
-							}}
-						>
-							<Card {...flashcard} handleAnswer={handleAnswer} />
-						</animated.div>
-					)
-				})}
-			</div>
+		<>
+			<div className="flex h-full w-[40%] flex-col justify-between">
+				<div className="relative h-full">
+					{localFlashcards.length === 0 ? (
+						<div className="flex h-full w-full items-center justify-center">
+							<span className="text-body-md">
+								Nenhum flashcard encontrado !
+							</span>
+						</div>
+					) : showResults ? (
+						<div className="flex h-full w-full flex-col items-center justify-center">
+							<h3 className="font-bold">Seu Resultado</h3>
+							<ul>
+								<li>Total de Flashcards: {localFlashcards.length}</li>
+								<li>Sabia: {qtdeSabia}</li>
+								<li>Dúvida: {qtdeDuvida}</li>
+								<li>Não Sabia: {qtdeNaoSabia}</li>
+							</ul>
 
-			<div className="flex w-full items-center justify-center space-x-2">
-				<Icon name="question-mark-circled" className="h-6 w-6" />
-				<span className="text-lg font-normal">Clique na carta para girar</span>
+							<Button
+								onClick={() => {
+									setSearchParams(prev => {
+										let page = Number(searchParams.get('page')) || 1
+										prev.set('page', (page + 1).toString())
+										return prev
+									})
+								}}
+							>
+								Carregar mais
+							</Button>
+						</div>
+					) : null}
+					{springs.map(({ scale, x, y }, index) => {
+						const flashcard = localFlashcards[index]
+						return (
+							<animated.div
+								id="deck-flashcards"
+								key={index}
+								className={cn('absolute flex h-[90%] w-full justify-center')}
+								style={{
+									x,
+									y,
+									scale,
+								}}
+							>
+								<Card {...flashcard} handleAnswer={handleAnswer} />
+							</animated.div>
+						)
+					})}
+				</div>
+
+				{localFlashcards.length > 0 && !showResults ? (
+					<div className="flex w-full items-center justify-center space-x-2">
+						<Icon name="question-mark-circled" className="h-6 w-6" />
+						<span className="text-lg font-normal">
+							Clique na carta para girar
+						</span>
+					</div>
+				) : null}
 			</div>
-		</div>
+			<Outlet />
+		</>
 	)
 }
 
@@ -222,10 +302,18 @@ type PropsCard = {
 	}
 	handleAnswer: (answer: string, flashcardId: string) => void
 }
-function Card({ frente, id, verso, handleAnswer, materia, lei }: PropsCard) {
+function Card({
+	frente,
+	id,
+	verso,
+	handleAnswer,
+	fundamento,
+	materia,
+	lei,
+}: PropsCard) {
 	const [flipped, setFlipped] = useState(false)
 	const { transform } = useSpring({
-		transform: `perspective(600px) rotateY(${flipped ? 180 : 0}deg)`,
+		transform: `perspective(1000px) rotateY(${flipped ? 180 : 0}deg)`,
 		config: { mass: 5, tension: 500, friction: 80 },
 	})
 
@@ -273,12 +361,12 @@ function Card({ frente, id, verso, handleAnswer, materia, lei }: PropsCard) {
 	}
 
 	return (
-		<div className="relative h-full w-full">
+		<div className="relative h-full max-h-[717px] w-full max-w-[484px] cursor-pointer transition-all duration-300 hover:-translate-y-2">
 			<animated.div
-				style={{ transform }}
+				style={{ transform, transformStyle: 'preserve-3d' }}
 				onClick={() => setFlipped(state => !state)}
 				id="card-frente"
-				className="absolute h-full w-full rounded-3xl border border-[#D2D2D2] bg-gradient-to-r from-[#FCFCFC] to-[#F2F2F2] p-3 backface-hidden"
+				className="absolute h-full w-full rounded-3xl border border-[#D2D2D2] bg-gradient-to-r from-[#FCFCFC] to-[#F2F2F2] p-3 backface-hidden "
 			>
 				<div
 					className="flex h-full w-full flex-col items-center justify-around rounded-xl border-4 px-5"
@@ -305,7 +393,7 @@ function Card({ frente, id, verso, handleAnswer, materia, lei }: PropsCard) {
 				</div>
 			</animated.div>
 			<animated.div
-				style={{ transform, rotateY: '180deg' }}
+				style={{ transform, rotateY: '180deg', transformStyle: 'preserve-3d' }}
 				onClick={() => setFlipped(state => !state)}
 				id="card-frente"
 				className="absolute h-full w-full rounded-3xl border border-[#D2D2D2] bg-gradient-to-r from-[#FCFCFC] to-[#F2F2F2] p-3 backface-hidden"
@@ -315,13 +403,14 @@ function Card({ frente, id, verso, handleAnswer, materia, lei }: PropsCard) {
 					style={{ borderColor: getColor() }}
 				>
 					<div className="flex w-full justify-between">
-						<div className="flex items-center space-x-2">
-							<Icon name="books" className="h-6 w-6 text-black" />
-							<span className="text-sm font-normal">Fundamento</span>
-						</div>
+						{fundamento ? (
+							<FundamentoCard fundamento={fundamento} />
+						) : (
+							<div></div>
+						)}
 						<div className="flex space-x-1">
-							<Icon name="trash" className="h-6 w-6" />
-							<Icon name="game-card" className="h-6 w-6" />
+							<IgnorarFlashcard flashcardId={id} />
+							<MinhasListas flashcardId={id} />
 							<Icon name="flag" className="h-6 w-6" />
 						</div>
 					</div>
@@ -393,5 +482,157 @@ function Card({ frente, id, verso, handleAnswer, materia, lei }: PropsCard) {
 				</div>
 			</animated.div>
 		</div>
+	)
+}
+
+function FundamentoCard({ fundamento }: { fundamento: string }) {
+	const [show, setShow] = useState(false)
+	return (
+		<>
+			<TooltipProvider delayDuration={0}>
+				<Tooltip>
+					<TooltipTrigger>
+						<div
+							className="flex items-center space-x-2"
+							onClick={e => {
+								e.stopPropagation()
+								setShow(true)
+							}}
+						>
+							<Icon name="books" className="h-6 w-6 text-black" />
+							<span className="text-sm font-normal">Fundamento</span>
+						</div>
+					</TooltipTrigger>
+					<TooltipContent>
+						<p>Veja o fundamento legal para a resposta do flashcard</p>
+					</TooltipContent>
+				</Tooltip>
+			</TooltipProvider>
+			<Dialog open={show} onOpenChange={setShow}>
+				<DialogContent onClick={e => e.stopPropagation()}>
+					<DialogHeader>
+						<DialogTitle>Fundamento</DialogTitle>
+						<DialogDescription>
+							<div
+								className="overflow-auto whitespace-normal text-justify"
+								dangerouslySetInnerHTML={{
+									__html: fundamento,
+								}}
+							/>
+						</DialogDescription>
+					</DialogHeader>
+				</DialogContent>
+			</Dialog>
+		</>
+	)
+}
+
+async function ignorarFlashcardAction(formData: FormData, userId: string) {
+	const values = Object.fromEntries(formData)
+
+	const id = String(values.id)
+
+	const exists = await prisma.flashcardIgnore.findFirst({
+		where: { flashcardId: id, userId },
+	})
+
+	if (!exists) {
+		await prisma.flashcardIgnore.create({
+			data: { flashcardId: id, userId },
+		})
+	}
+
+	return json(
+		{ sucess: 'ok' },
+		{
+			headers: await createToastHeaders({
+				title: 'Sucesso',
+				description: 'Flashcard enviado para a lixeira.',
+			}),
+		},
+	)
+}
+function IgnorarFlashcard({ flashcardId }: { flashcardId: string }) {
+	const fetcher = useFetcher<typeof ignorarFlashcardAction>()
+	const [show, setShow] = useState(false)
+
+	let isPending = fetcher.state === 'submitting'
+
+	useEffect(() => {
+		if (fetcher.data?.sucess === 'ok') {
+			setShow(false)
+		}
+	}, [fetcher.data])
+
+	return (
+		<>
+			<TooltipProvider delayDuration={0}>
+				<Tooltip>
+					<TooltipTrigger>
+						<div
+							onClick={e => {
+								e.stopPropagation()
+								setShow(true)
+							}}
+						>
+							<Icon name="trash" className="h-6 w-6" />
+						</div>
+					</TooltipTrigger>
+					<TooltipContent>
+						<p>Remover flashcard</p>
+					</TooltipContent>
+				</Tooltip>
+			</TooltipProvider>
+			<Dialog open={show} onOpenChange={setShow}>
+				<DialogContent onClick={e => e.stopPropagation()}>
+					<DialogHeader>
+						<DialogTitle>Você tem certeza?</DialogTitle>
+						<DialogDescription>
+							Tem certeza de que deseja marcar este flashcard como excluído? Ele
+							não aparecerá mais para você responder.
+						</DialogDescription>
+					</DialogHeader>
+
+					<DialogFooter>
+						<fetcher.Form method="post">
+							<input
+								type="hidden"
+								name="intent"
+								value={ignorarFlashcardIntent}
+							/>
+							<input type="hidden" name="id" value={flashcardId} />
+							<Button type="submit" variant="destructive" disabled={isPending}>
+								{isPending ? 'Excluindo...' : 'Excluir'}
+							</Button>
+						</fetcher.Form>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+		</>
+	)
+}
+
+function MinhasListas({ flashcardId }: { flashcardId: string }) {
+	const [searchParams] = useSearchParams()
+	return (
+		<>
+			<TooltipProvider delayDuration={0}>
+				<Tooltip>
+					<TooltipTrigger>
+						<Link
+							onClick={e => {
+								e.stopPropagation()
+							}}
+							to={`${flashcardId}/lists?${searchParams.toString()}`}
+						>
+							<Icon name="game-card" className="h-6 w-6" />
+						</Link>
+					</TooltipTrigger>
+					<TooltipContent>
+						<p>Minhas listas</p>
+					</TooltipContent>
+				</Tooltip>
+			</TooltipProvider>
+		</>
 	)
 }
