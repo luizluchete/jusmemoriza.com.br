@@ -59,7 +59,7 @@ export default function LayoutApp() {
 					</div>
 				</div>
 			</div>
-			<div className="flex flex-1 flex-col lg:pl-52">
+			<div className="flex flex-1 flex-col lg:pl-64">
 				<main className="flex-1">
 					<div className="py-6">
 						<div className="container">

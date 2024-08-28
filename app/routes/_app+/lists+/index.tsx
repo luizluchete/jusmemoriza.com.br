@@ -132,11 +132,11 @@ export default function Index() {
 				</div>
 			)}
 
-			<ul className="mt-3 grid grid-cols-1 gap-y-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+			<ul className="mt-3 grid grid-cols-1 gap-y-2 sm:grid-cols-2 sm:gap-6 lg:grid-cols-2 xl:grid-cols-4">
 				{lists.map(list => (
-					<Link key={list.id} to={`${list.id}/flashcards`}>
+					<Link key={list.id} to={`${list.id}/flashcards`} className="relative">
 						<div
-							className="relative flex h-32 w-full max-w-96 cursor-pointer items-center space-x-2 rounded-lg border px-4 hover:shadow-md"
+							className="relative flex w-full cursor-pointer items-center space-x-2 rounded-lg border px-4 py-3 hover:shadow-md"
 							style={{ borderColor: list.color || undefined }}
 						>
 							<div className="relative flex h-20 w-20 items-center justify-center">

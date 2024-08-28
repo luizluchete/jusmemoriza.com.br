@@ -215,7 +215,6 @@ function Deck() {
 
 		// Verifica se é o ultimo flashcard da pilha
 		if (localFlashcards[0].id === flashcardId) {
-			console.log('ultimo flashcard')
 			setTimeout(() => {
 				setShowResults(true)
 			}, 600)
@@ -233,7 +232,7 @@ function Deck() {
 							</span>
 						</div>
 					) : showResults ? (
-						<div className="flex h-full w-full flex-col items-center justify-center">
+						<div className="flex w-full flex-col items-center justify-center">
 							<h3 className="font-bold">Seu Resultado</h3>
 							<ul>
 								<li>Total de Flashcards: {localFlashcards.length}</li>
