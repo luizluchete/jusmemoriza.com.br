@@ -22,7 +22,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				frente,
 				verso,
 				leiId,
-				userList: {
+				ListsUsersMyFlashcards: {
 					deleteMany: {},
 					create: lists?.map(id => ({ listId: id })),
 				},
@@ -39,7 +39,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			verso,
 			leiId,
 			userId: userId,
-			userList: {
+			ListsUsersMyFlashcards: {
 				create: lists?.map(id => ({ listId: id })),
 			},
 		},

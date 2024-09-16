@@ -6,7 +6,7 @@ type Input = {
 	page?: number
 	userId: string
 	comboId?: string[]
-	materiaId?: string[]
+	materiaId?: string[] | string
 	leiId?: string[]
 	tituloId?: string[]
 	capituloId?: string[]
@@ -22,9 +22,14 @@ export async function countFlashcards({
 	materiaId,
 	tituloId,
 }: Input) {
+	const materia = !materiaId
+		? []
+		: Array.isArray(materiaId)
+			? materiaId
+			: [materiaId]
 	const whereMateria =
-		materiaId && materiaId.length > 0
-			? Prisma.sql`and materias.id in (${Prisma.join(materiaId)})`
+		materia.length > 0
+			? Prisma.sql`and materias.id in (${Prisma.join(materia)})`
 			: Prisma.empty
 	const whereLei =
 		leiId && leiId.length > 0
@@ -131,12 +136,12 @@ export async function buscaMateriasParaFiltro() {
 	return materias
 }
 
-export async function buscaLeisParaFiltro(materiaId: string[]) {
+export async function buscaLeisParaFiltro(materiaId: string) {
 	const leis = await prisma.lei.findMany({
 		select: { id: true, name: true },
 		where: {
 			status: true,
-			materiaId: materiaId.length ? { in: materiaId } : undefined,
+			materiaId,
 		},
 	})
 	return leis
@@ -147,9 +152,14 @@ export async function buscarFlashcardsPadrao({
 	leiId,
 	userId,
 }: Input) {
+	const materia = !materiaId
+		? []
+		: Array.isArray(materiaId)
+			? materiaId
+			: [materiaId]
 	const whereMateria =
-		materiaId && materiaId.length > 0
-			? Prisma.sql`and materias.id in (${Prisma.join(materiaId)})`
+		materia.length > 0
+			? Prisma.sql`and materias.id in (${Prisma.join(materia)})`
 			: Prisma.empty
 	const whereLei =
 		leiId && leiId.length > 0
@@ -167,10 +177,7 @@ export async function buscarFlashcardsPadrao({
            f.fundamento,
            materias.name as materia,
 		   materias.color as color,
-           leis.name as lei,
-           (select true from "FlashcardUserFavorites" fuf
-             where fuf."flashcardId" = f.id
-               and fuf."userId" = ${userId}) favorite
+           leis.name as lei
       from "Flashcard" f, materias, leis, titulos, capitulos, artigos
      where f."artigoId" = artigos.id
        and artigos."capituloId" = capitulos.id
@@ -204,7 +211,6 @@ export async function buscarFlashcardsPadrao({
 			color: String(flashcard.color) || undefined,
 		},
 		lei: { name: String(flashcard.lei) },
-		favorite: !!flashcard.favorite,
 	}))
 }
 
@@ -215,9 +221,14 @@ export async function buscarFlashcardsPorTipo({
 	leiId,
 	tipo,
 }: Input) {
+	const materia = !materiaId
+		? []
+		: Array.isArray(materiaId)
+			? materiaId
+			: [materiaId]
 	const whereMateria =
-		materiaId && materiaId.length > 0
-			? Prisma.sql`and materias.id in (${Prisma.join(materiaId)})`
+		materia.length > 0
+			? Prisma.sql`and materias.id in (${Prisma.join(materia)})`
 			: Prisma.empty
 	const whereLei =
 		leiId && leiId.length > 0

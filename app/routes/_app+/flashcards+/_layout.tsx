@@ -1,9 +1,17 @@
 import { invariantResponse } from '@epic-web/invariant'
 import { type LoaderFunctionArgs } from '@remix-run/node'
 import { json, Outlet, useLoaderData, useSearchParams } from '@remix-run/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Button } from '#app/components/ui/button'
 import { Icon } from '#app/components/ui/icon'
 import { MultiCombobox } from '#app/components/ui/multi-combobox'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '#app/components/ui/select'
 import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
 import { getUserImgSrc } from '#app/utils/misc'
@@ -23,22 +31,31 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		where: { id: userId },
 	})
 	if (!user) invariantResponse(user, 'User not found', { status: 404 })
+
 	const url = new URL(request.url)
 	const tipo = url.searchParams.get('type') || undefined
-	const materiaId = url.searchParams.getAll('materiaId')
+
 	const leiId = url.searchParams.getAll('leiId')
-	const count = await countFlashcards({ userId, leiId, materiaId, tipo })
 	const materias = await buscaMateriasParaFiltro()
-	const leis =
-		materiaId.length > 0 ? await buscaLeisParaFiltro(materiaId) : undefined
-	return json({ user, count, materias, leis })
+
+	const materiaId = url.searchParams.get('materiaId') || materias[0]?.id
+	invariantResponse(materiaId, 'Materia not found', { status: 404 })
+	const materia = materias.find(({ id }) => id === materiaId)
+	invariantResponse(materia, 'Materia not found', { status: 404 })
+
+	const count = await countFlashcards({ userId, leiId, materiaId, tipo })
+	const leis = await buscaLeisParaFiltro(materiaId)
+	return json({ user, count, materias, leis, materia })
 }
 
 export default function () {
 	const { user, count } = useLoaderData<typeof loader>()
-	const { duvida, naoSabia, sabia } = count
+	const [seconds, setSeconds] = useState(0)
 
 	const [searchParams, setSearchParams] = useSearchParams()
+
+	const { duvida, naoSabia, sabia } = count
+	const rating = (sabia / count.total) * 100
 
 	function changeType(type: string) {
 		const newParams = searchParams
@@ -50,6 +67,20 @@ export default function () {
 		// O arco vai de -90 graus (0) a 90 graus (100)
 		const angle = (rating / 100) * 180 - 90
 		return angle
+	}
+
+	useEffect(() => {
+		const interval = setInterval(() => {
+			setSeconds(seconds => seconds + 1)
+		}, 1000)
+
+		return () => clearInterval(interval)
+	}, [seconds])
+
+	const formatTime = (seconds: number) => {
+		const minutes = Math.floor(seconds / 60)
+		const secs = seconds % 60
+		return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 	}
 	return (
 		<div className="mx-auto mt-10 flex h-screen max-h-[800px] min-h-[700px] w-full justify-around">
@@ -77,15 +108,19 @@ export default function () {
 						<div className="absolute top-0 flex h-[180px] w-[238px] items-center justify-center  text-black">
 							<Icon
 								name="rocket"
-								className="h-12 w-12 origin-[25px_45px]"
-								style={{ transform: `rotate(${calculateAngle(50)}deg)` }}
+								className="h-12 w-12 origin-[25px_45px] transform transition-all duration-500"
+								style={{ transform: `rotate(${calculateAngle(rating)}deg)` }}
 							/>
 						</div>
 					</div>
 
 					<div className="flex flex-col items-center">
-						<span className="text-2xl font-semibold">50% CONCLUÍDO</span>
-						<span className="text-xl font-normal">Tempo Decorrido: 13:45</span>
+						<span className="text-2xl font-semibold">
+							{rating.toFixed(0)}% CONCLUÍDO
+						</span>
+						<span className="text-xl font-normal">
+							Tempo Decorrido: {formatTime(seconds)}
+						</span>
 					</div>
 				</div>
 
@@ -138,15 +173,38 @@ export default function () {
 }
 
 function CardFiltros() {
-	const { count, materias } = useLoaderData<typeof loader>()
+	const { count, materias, materia, leis } = useLoaderData<typeof loader>()
 	const { total } = count
+	const [searchParams, setSearchParams] = useSearchParams()
 
-	const [searchParams] = useSearchParams()
-	const materiaId = searchParams.getAll('materiaId')
-	const searchMaterias = materias.filter(({ id }) => materiaId.includes(id))
-	const [materiasSelected, setMateriasSelected] = useState(
-		searchMaterias.map(({ id, name }) => ({ id, label: name })),
-	)
+	const leiId = searchParams.getAll('leiId')
+	const searchLeis = leis
+		? leis
+				.filter(({ id }) => leiId.includes(id))
+				.map(({ id, name }) => ({ id, label: name }))
+		: []
+	const [leisSelected, setLeisSelected] = useState<
+		{
+			id: string
+			label: string
+		}[]
+	>(searchLeis)
+
+	function handleChangeMateria(materiaId: string) {
+		setLeisSelected([])
+		const newParams = new URLSearchParams()
+		newParams.set('materiaId', materiaId)
+		setSearchParams(newParams)
+	}
+
+	function handleSubmitFiltros() {
+		const newParams = new URLSearchParams()
+		newParams.set('materiaId', materia.id)
+		if (leisSelected.length > 0) {
+			leisSelected.forEach(({ id }) => newParams.append('leiId', id))
+		}
+		setSearchParams(newParams)
+	}
 	return (
 		<div
 			id="first-col"
@@ -162,29 +220,35 @@ function CardFiltros() {
 				</div>
 
 				<div className="flex w-full flex-col justify-center space-y-5 px-5">
-					<MultiCombobox
-						icon={<Icon name="single-book" className="h-5 w-5" />}
-						placeholder="Matérias"
+					<Select
+						defaultValue={materia.id}
 						name="materiaId"
-						options={materias.map(({ id, name }) => ({ id, label: name }))}
-						selectedValues={materiasSelected}
-						setSelectedValues={setMateriasSelected}
-					/>
+						onValueChange={handleChangeMateria}
+					>
+						<SelectTrigger className="w-full">
+							<SelectValue placeholder="Matéria" />
+						</SelectTrigger>
+						<SelectContent>
+							{materias.map(({ id, name }) => (
+								<SelectItem key={id} value={id}>
+									{name}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 
 					<MultiCombobox
 						icon={<Icon name="lei" className="h-5 w-5" />}
 						placeholder="Leis"
 						name="leiId"
-						options={[]}
-						selectedValues={[]}
-						setSelectedValues={() => {}}
+						options={leis?.map(({ id, name }) => ({
+							label: name,
+							id,
+						}))}
+						selectedValues={leisSelected}
+						setSelectedValues={setLeisSelected}
 					/>
-				</div>
-
-				<div className="flex w-full items-center justify-center">
-					<span className="text-center text-lg font-bold">
-						Filtros Selecionados:
-					</span>
+					<Button onClick={handleSubmitFiltros}>Buscar</Button>
 				</div>
 			</div>
 			<div className="flex w-full items-center justify-evenly space-x-3 rounded-xl border border-gray-400 p-4">

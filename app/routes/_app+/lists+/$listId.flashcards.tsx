@@ -92,7 +92,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 			},
 		},
 		where: {
-			flashcardId: { not: null },
 			listId,
 			flashcard: {
 				OR: searchText
@@ -109,7 +108,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	})
 	const [count] = await Promise.all([
 		prisma.listsUsersFlashcards.count({
-			where: { listId: listId, flashcardId: { not: null } },
+			where: { listId: listId },
 		}),
 	])
 

@@ -34,6 +34,7 @@ model User {
   UserFlashcard       UserFlashcard[]
   createdProduct      Product[]                @relation(name: "createdBy")
   updatedProduct      Product[]                @relation(name: "updatedBy")
+  NoteUserQuiz        NoteUserQuiz[]
 
   @@map("users")
 }
@@ -295,6 +296,8 @@ model Quiz {
   userResults   QuizUserResults[]
   userFavorites QuizUserFavorites[]
   notifyErrors  NotifyError[]
+  UserQuizItems UserQuizItems[]
+  NoteUserQuiz  NoteUserQuiz[]
 
   @@index([artigoId])
   @@index([bancaId, cargoId])
@@ -402,29 +405,38 @@ model ComboImage {
 }
 
 model ListsUser {
-  id         String                 @id @default(cuid())
-  name       String
-  color      String?
-  icon       String?
-  userId     String
-  user       User                   @relation(fields: [userId], references: [id])
-  createdAt  DateTime               @default(now())
-  updatedAt  DateTime               @updatedAt
-  flashcards ListsUsersFlashcards[]
+  id                     String                   @id @default(cuid())
+  name                   String
+  color                  String?
+  icon                   String?
+  userId                 String
+  user                   User                     @relation(fields: [userId], references: [id])
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  flashcards             ListsUsersFlashcards[]
+  ListsUsersMyFlashcards ListsUsersMyFlashcards[]
 
   @@map("listsUsers")
 }
 
 model ListsUsersFlashcards {
-  id            String   @id @default(cuid())
-  listId        String
-  flashcardId   String?
-  myflashcardId String?
-  createdAt     DateTime @default(now())
+  id          String    @id @default(cuid())
+  listId      String
+  flashcardId String
+  createdAt   DateTime  @default(now())
+  list        ListsUser @relation(fields: [listId], references: [id])
+  flashcard   Flashcard @relation(fields: [flashcardId], references: [id])
 
-  list        ListsUser      @relation(fields: [listId], references: [id])
-  flashcard   Flashcard?     @relation(fields: [flashcardId], references: [id])
-  myflashcard UserFlashcard? @relation(fields: [myflashcardId], references: [id])
+  @@index([listId])
+}
+
+model ListsUsersMyFlashcards {
+  id              String        @id @default(cuid())
+  listId          String
+  userFlashcardId String
+  createdAt       DateTime      @default(now())
+  list            ListsUser     @relation(fields: [listId], references: [id])
+  userFlaschard   UserFlashcard @relation(fields: [userFlashcardId], references: [id])
 
   @@index([listId])
 }
@@ -483,16 +495,16 @@ model Config {
 }
 
 model UserFlashcard {
-  id        String                 @id @default(cuid())
-  frente    String
-  verso     String
-  userId    String
-  leiId     String
-  user      User                   @relation(fields: [userId], references: [id])
-  lei       Lei                    @relation(fields: [leiId], references: [id])
-  createdAt DateTime               @default(now())
-  updatedAt DateTime               @updatedAt
-  userList  ListsUsersFlashcards[]
+  id                     String                   @id @default(cuid())
+  frente                 String
+  verso                  String
+  userId                 String
+  leiId                  String
+  user                   User                     @relation(fields: [userId], references: [id])
+  lei                    Lei                      @relation(fields: [leiId], references: [id])
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  ListsUsersMyFlashcards ListsUsersMyFlashcards[]
 }
 
 model Product {
@@ -520,4 +532,34 @@ model ComboOnProduct {
   product Product @relation(fields: [productId], references: [id])
 
   @@id([comboId, productId])
+}
+
+model UserQuiz {
+  id        String          @id @default(cuid())
+  userId    String
+  status    String          @default("started")
+  createdAt DateTime        @default(now())
+  quizzes   UserQuizItems[]
+}
+
+model UserQuizItems {
+  id         String   @id @default(cuid())
+  quizUserId String
+  quizId     String
+  answer     String?
+  createdAt  DateTime @default(now())
+  quizUser   UserQuiz @relation(fields: [quizUserId], references: [id])
+  quiz       Quiz     @relation(fields: [quizId], references: [id])
+}
+
+model NoteUserQuiz {
+  quizId    String
+  userId    String
+  note      String
+  createdAt DateTime @default(now())
+
+  quiz Quiz @relation(fields: [quizId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([quizId, userId])
 }

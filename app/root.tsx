@@ -46,6 +46,15 @@ export const links: LinksFunction = () => {
 			href: '/favicons/favicon-32x32.png',
 		},
 		{ rel: 'apple-touch-icon', href: '/favicons/apple-touch-icon.png' },
+		{ rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+		{
+			rel: 'preconnect',
+			href: 'https://fonts.gstatic.com',
+		},
+		{
+			rel: 'stylesheet',
+			href: 'https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap',
+		},
 		{
 			rel: 'manifest',
 			href: '/site.webmanifest',

@@ -291,6 +291,23 @@ export async function downloadFile(url: string, retries: number = 0) {
 	}
 }
 
+export function hexToRgba(hex: string, alpha: number) {
+	// Remove o hash se estiver presente
+	hex = hex.replace(/^#/, '')
+
+	// Se a cor for em formato curto, expanda para o formato longo
+	if (hex.length === 4) {
+		hex = hex
+			.split('')
+			.map((char, i) => (i === 0 ? char + char : char))
+			.join('')
+	}
+
+	// Extrai os valores RGB
+	const [r, g, b] = hex.match(/\w\w/g)?.map(x => parseInt(x, 16)) || [0, 0, 0]
+	return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 export function getMonthName(month: number) {
 	const monthNames = [
 		'Janeiro',

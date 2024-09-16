@@ -19,6 +19,7 @@ const backfaceVisibility = plugin(function ({ addUtilities }) {
 export default {
 	content: ['./app/**/*.{ts,tsx,jsx,js}'],
 	darkMode: 'class',
+
 	theme: {
 		container: {
 			center: true,

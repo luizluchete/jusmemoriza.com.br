@@ -50,6 +50,7 @@ import {
 import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
 import { cn } from '#app/utils/misc'
+import { createToastHeaders } from '#app/utils/toast.server'
 import { notifyErrorQuiz } from './lei-seca.server'
 
 const PAGE_SIZE = 10
@@ -74,6 +75,17 @@ const notifyErrorSchema = z.object({
 		.max(500, {
 			message: 'Descreva em menos de 500 caracteres o erro encontrado',
 		}),
+})
+
+const addNoteSchema = z.object({
+	quizId: z.string(),
+	note: z
+		.string({ required_error: 'Adicione sua anotação' })
+		.min(3, { message: 'Sua anotação deve ter no minimo 3 caracteres' })
+		.max(250, {
+			message: 'Descreva em menos de 250 caracteres',
+		})
+		.optional(),
 })
 
 const schemaQuiz = z.discriminatedUnion('intent', [
@@ -135,6 +147,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 					},
 				},
 			},
+			NoteUserQuiz: { where: { userId } },
 			userFavorites: { where: { userId } },
 		},
 		where: whereQuizzes,
@@ -249,7 +262,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		bancasPromise,
 		cargosPromise,
 	])
-
 	const quizzesMapper = quizzes.map(quiz => ({
 		id: quiz.id,
 		enunciado: quiz.enunciado,
@@ -260,6 +272,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		favorite: quiz.userFavorites.length > 0,
 		banca: quiz.banca ? { id: quiz.banca.id, name: quiz.banca.name } : null,
 		cargo: quiz.cargo ? { id: quiz.cargo.id, name: quiz.cargo.name } : null,
+		note: quiz.NoteUserQuiz.length > 0 ? quiz.NoteUserQuiz[0].note : null,
 		artigo: {
 			id: quiz.artigo.id,
 			name: quiz.artigo.name,
@@ -299,6 +312,12 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
 	const userId = await requireUserId(request)
 	const formData = await request.formData()
+
+	const _intent = formData.get('intent')
+	if (_intent === 'add-note') {
+		return addNoteAction(formData, userId)
+	}
+
 	const submission = await parseWithZod(formData, {
 		schema: schemaQuiz.superRefine(async (data, ctx) => {
 			if (data.intent === 'notifyError') {
@@ -372,7 +391,8 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 		return json({ result: submission.reply({ resetForm: true }) })
 	}
-	return json(null)
+
+	return json({ message: 'invalid intent' }, { status: 400 })
 }
 export default function LeiSecaComboId() {
 	const {
@@ -690,11 +710,11 @@ export default function LeiSecaComboId() {
 									cargo: quiz.cargo,
 									lei: quiz.lei,
 									materia: quiz.materia,
+									note: quiz.note,
 								}}
 							/>
 						))}
 					</ul>
-					{}
 					<div className="mt-2">
 						<Pagination
 							totalRegisters={count}
@@ -718,6 +738,7 @@ function CardQuiz({
 		banca: { name: string } | null
 		cargo: { name: string } | null
 		favorite: boolean
+		note?: string | null
 	}
 	index: number
 }) {
@@ -732,6 +753,7 @@ function CardQuiz({
 		banca,
 		cargo,
 		fundamento,
+		note,
 		lei,
 		materia,
 		favorite,
@@ -835,6 +857,7 @@ function CardQuiz({
 						</button>
 					</fetcherAnswer.Form>
 				</div>
+				<AddNote quizId={quiz.id} note={note || ''} />
 				{quizRespondido && (
 					<div>
 						<div className="rounded-md border border-dashed border-primary bg-[#F5F6FE] p-5">
@@ -934,7 +957,6 @@ function CardQuiz({
 						</div>
 					</div>
 				</DialogHeadless>
-
 				<DialogHeadless
 					className="relative z-10"
 					open={openNotifyError}
@@ -991,6 +1013,122 @@ function CardQuiz({
 					</div>
 				</DialogHeadless>
 			</li>
+		</>
+	)
+}
+
+async function addNoteAction(formData: FormData, userId: string) {
+	const submission = parseWithZod(formData, { schema: addNoteSchema })
+	if (submission.status !== 'success') {
+		return json({ result: submission.reply() }, { status: 400 })
+	}
+	const { note, quizId } = submission.value
+
+	if (note) {
+		await prisma.noteUserQuiz.upsert({
+			where: { quizId_userId: { quizId, userId } },
+			create: { note, quizId, userId },
+			update: { note },
+		})
+	} else {
+		const exists = await prisma.noteUserQuiz.findFirst({
+			where: { quizId, userId },
+		})
+		if (exists) {
+			await prisma.noteUserQuiz.delete({
+				where: { quizId_userId: { quizId, userId } },
+			})
+		}
+	}
+
+	return json(
+		{ result: submission.reply() },
+		{
+			headers: await createToastHeaders({
+				type: 'success',
+				description: 'Anotação salva com sucesso',
+			}),
+		},
+	)
+}
+
+function AddNote({ quizId, note }: { quizId: string; note: string }) {
+	const fetcher = useFetcher<typeof addNoteAction>()
+	const [open, setOpen] = useState(false)
+	const [value, setValue] = useState(note)
+	const [form, fields] = useForm({
+		id: `note-quiz-${quizId}`,
+		constraint: getZodConstraint(addNoteSchema),
+		lastResult: fetcher.data?.result,
+		defaultValue: {
+			note,
+		},
+		onValidate({ formData }) {
+			return parseWithZod(formData, { schema: addNoteSchema })
+		},
+		shouldRevalidate: 'onBlur',
+	})
+	useEffect(() => {
+		if (fetcher.data?.result.status === 'success') {
+			setOpen(false)
+		}
+	}, [fetcher.data])
+
+	return (
+		<>
+			<div
+				className="flex w-max cursor-pointer items-center space-x-2 rounded-md border border-gray-200 px-1.5 py-2 hover:bg-gray-200"
+				onClick={() => setOpen(true)}
+			>
+				<Icon name="pencil-2" />
+				<span className="text-xs">Adicionar anotação</span>
+			</div>
+			<DialogHeadless
+				className="relative z-10"
+				open={open}
+				onClose={() => setOpen(false)}
+			>
+				<DialogBackdropHeadless
+					transition
+					className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in"
+				/>
+
+				<div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+					<div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+						<DialogPanelHeadless
+							transition
+							className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all data-[closed]:translate-y-4 data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in sm:my-8 sm:w-full sm:max-w-sm sm:p-6 data-[closed]:sm:translate-y-0 data-[closed]:sm:scale-95"
+						>
+							<div>
+								<h1 className="font-bold">
+									Adicione uma anotação ou comentário
+								</h1>
+								<p className="text-xs">
+									Utilize este campo para registrar observações importantes ou
+									dúvidas que deseja revisar mais tarde.
+								</p>
+							</div>
+							<fetcher.Form method="post" {...getFormProps(form)}>
+								<input type="hidden" hidden value="add-note" name="intent" />
+								<TextareaField
+									labelProps={{}}
+									textareaProps={{
+										...getInputProps(fields.note, { type: 'text' }),
+										value: value,
+										onChange: e => setValue(e.currentTarget.value),
+									}}
+									errors={fields.note.errors}
+								/>
+								<ErrorList errors={form.errors} id={form.errorId} />
+								<input type="hidden" name="quizId" value={quizId} readOnly />
+								<div className="space-x-2">
+									<Button>Salvar</Button>
+								</div>
+							</fetcher.Form>
+						</DialogPanelHeadless>
+					</div>
+				</div>
+			</DialogHeadless>
 		</>
 	)
 }

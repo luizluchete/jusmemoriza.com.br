@@ -6,6 +6,7 @@ const navigation = [
 	{ name: 'Início', href: '/home', icon: 'home' },
 	{ name: 'Lei Seca', href: '/lei-seca', icon: 'lei' },
 	{ name: 'Flashcards', href: '/flashcards/game', icon: 'game-card' },
+	{ name: 'Quizzes', href: '/quizzes', icon: 'game-card' },
 	{ name: 'Minhas Listas', href: '/lists', icon: 'books' },
 	{ name: 'Meus Flashcards', href: '/mycards', icon: 'books' },
 	{ name: 'Estatísticas', href: '/statistics', icon: 'chart-curve' },

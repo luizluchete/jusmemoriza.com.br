@@ -53,11 +53,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			icon: true,
 			_count: {
 				select: {
-					flashcards: {
-						where: {
-							NOT: { OR: [{ flashcardId: '' }, { flashcardId: null }] },
-						},
-					},
+					flashcards: true,
 				},
 			},
 		},

@@ -1,4 +1,6 @@
-import { parseWithZod } from '@conform-to/zod'
+import { getFormProps, getInputProps, useForm } from '@conform-to/react'
+import { getZodConstraint, parseWithZod } from '@conform-to/zod'
+import { invariantResponse } from '@epic-web/invariant'
 import { animated, useSpring, useSprings } from '@react-spring/web'
 import {
 	type ActionFunctionArgs,
@@ -15,6 +17,7 @@ import {
 } from '@remix-run/react'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
+import { ErrorList, TextareaField } from '#app/components/forms'
 import { Button } from '#app/components/ui/button'
 import {
 	Dialog,
@@ -25,6 +28,7 @@ import {
 	DialogTitle,
 } from '#app/components/ui/dialog'
 import { Icon } from '#app/components/ui/icon'
+import { StatusButton } from '#app/components/ui/status-button'
 import {
 	Tooltip,
 	TooltipContent,
@@ -32,11 +36,12 @@ import {
 	TooltipTrigger,
 } from '#app/components/ui/tooltip'
 import { requireUserId } from '#app/utils/auth.server'
+import { getGlobalParams } from '#app/utils/config.server'
 import { prisma } from '#app/utils/db.server'
+import { sendEmail } from '#app/utils/email.server'
 import { cn } from '#app/utils/misc'
 import { createToastHeaders } from '#app/utils/toast.server'
 import {
-	buscaLeisParaFiltro,
 	buscaMateriasParaFiltro,
 	buscarFlashcardsPadrao,
 	buscarFlashcardsPorTipo,
@@ -46,12 +51,22 @@ import {
 //intents flashcards
 const intentAnswer = 'answer'
 const ignorarFlashcardIntent = 'ignorarFlashcard'
-// const notifyErrorIntent = 'notifyError'
+const notifyErrorIntent = 'notifyError'
 
 // Schemas zod
 const answerFlashcardSchema = z.object({
 	id: z.string(),
 	answer: z.enum(['sabia', 'nao_sabia', 'duvida']),
+})
+
+const notifyErrorFlashcardSchema = z.object({
+	flashcardId: z.string(),
+	message: z
+		.string({ required_error: 'Descreva o erro encontado' })
+		.min(20, { message: 'Descreva em mais de 20 caracteres o erro encontrado' })
+		.max(500, {
+			message: 'Descreva em menos de 500 caracteres o erro encontrado',
+		}),
 })
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -60,18 +75,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	const url = new URL(request.url)
 	const page = Number(url.searchParams.get('page')) || 1
 	const tipo = url.searchParams.get('type')
-	const materiaId = url.searchParams.getAll('materiaId')
 	const leiId = url.searchParams.getAll('leiId')
+
+	const materias = await buscaMateriasParaFiltro()
+
+	const materiaId = url.searchParams.get('materiaId') || materias[0]?.id
+	invariantResponse(materiaId, 'Materia not found', { status: 404 })
 
 	const flashcards = tipo
 		? await buscarFlashcardsPorTipo({ userId, tipo, materiaId, leiId, page })
 		: await buscarFlashcardsPadrao({ userId, materiaId, leiId })
 
 	const count = await countFlashcards({ userId, materiaId, leiId })
-	const materias = await buscaMateriasParaFiltro()
-	const leis =
-		materiaId.length > 0 ? await buscaLeisParaFiltro(materiaId) : undefined
-	return json({ flashcards, count, materias, leis })
+
+	return json({ flashcards, count })
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -86,18 +103,18 @@ export async function action({ request }: ActionFunctionArgs) {
 		return ignorarFlashcardAction(formData, userId)
 	}
 
+	if (intent === notifyErrorIntent) {
+		return notificarErroAction(formData, userId)
+	}
+
 	return json({ message: 'invalid intent' }, { status: 400 })
 }
 
 export const shouldRevalidate: ShouldRevalidateFunction = ({
 	defaultShouldRevalidate,
 	formMethod,
-	nextUrl,
 }) => {
 	if (formMethod === 'POST') return false
-
-	console.log('nextUrl', nextUrl)
-
 	return defaultShouldRevalidate
 }
 
@@ -232,9 +249,12 @@ function Deck() {
 							</span>
 						</div>
 					) : showResults ? (
-						<div className="flex w-full flex-col items-center justify-center">
-							<h3 className="font-bold">Seu Resultado</h3>
-							<ul>
+						<div className="flex h-full w-full flex-col items-center justify-center space-y-5">
+							<h3 className="text-4xl font-bold">Você chegou ao fim!</h3>
+							<span className="text-xl font-semibold">
+								Confira seus resultados:
+							</span>
+							<ul className="text-xl font-medium text-black/50">
 								<li>Total de Flashcards: {localFlashcards.length}</li>
 								<li>Sabia: {qtdeSabia}</li>
 								<li>Dúvida: {qtdeDuvida}</li>
@@ -242,6 +262,7 @@ function Deck() {
 							</ul>
 
 							<Button
+								className="h-14 w-full max-w-64 bg-[#29DB89] text-xl font-semibold hover:bg-[#29DB89] hover:brightness-95"
 								onClick={() => {
 									setSearchParams(prev => {
 										let page = Number(searchParams.get('page')) || 1
@@ -410,7 +431,7 @@ function Card({
 						<div className="flex space-x-1">
 							<IgnorarFlashcard flashcardId={id} />
 							<MinhasListas flashcardId={id} />
-							<Icon name="flag" className="h-6 w-6" />
+							<NotificarErro flashcardId={id} />
 						</div>
 					</div>
 
@@ -614,24 +635,186 @@ function IgnorarFlashcard({ flashcardId }: { flashcardId: string }) {
 function MinhasListas({ flashcardId }: { flashcardId: string }) {
 	const [searchParams] = useSearchParams()
 	return (
+		<TooltipProvider delayDuration={0}>
+			<Tooltip>
+				<TooltipTrigger>
+					<Link
+						onClick={e => {
+							e.stopPropagation()
+						}}
+						to={`${flashcardId}/lists?${searchParams.toString()}`}
+					>
+						<Icon name="game-card" className="h-6 w-6" />
+					</Link>
+				</TooltipTrigger>
+				<TooltipContent>
+					<p>Minhas listas</p>
+				</TooltipContent>
+			</Tooltip>
+		</TooltipProvider>
+	)
+}
+
+async function notificarErroAction(form: FormData, userId: string) {
+	const submission = await parseWithZod(form, {
+		schema: notifyErrorFlashcardSchema.superRefine(async (data, ctx) => {
+			const { flashcardId } = data
+			const existsNotify = await prisma.notifyError.findFirst({
+				where: { fixed: false, flashcardId, userId },
+			})
+			if (existsNotify) {
+				ctx.addIssue({
+					path: [''],
+					code: z.ZodIssueCode.custom,
+					message:
+						'Você já possui uma notificação de erro para este flashcard em aberto. Aguarde a verificação da equipe !',
+				})
+			}
+		}),
+		async: true,
+	})
+
+	if (submission.status !== 'success') {
+		return json({ result: submission.reply() }, { status: 400 })
+	}
+	const { flashcardId, message } = submission.value
+
+	const configs = await getGlobalParams()
+	if (configs && configs.notifyEmail) {
+		const notifyEmail = configs.notifyEmail
+		const user = await prisma.user.findFirst({
+			select: { name: true, email: true },
+			where: { id: userId },
+		})
+		if (!user) throw new Error('Usuário não encontrado')
+		const flashcard = await prisma.flashcard.findFirst({
+			where: { id: flashcardId },
+		})
+		await prisma.notifyError.create({
+			data: { userMessage: message, flashcardId, userId },
+		})
+		const response = await sendEmail({
+			subject: 'Erro em FLASHCARD reportado por usuário',
+			to: notifyEmail,
+			react: (
+				<div>
+					<h1>Erro em FLASHCARD reportado por usuário</h1>
+					<p>
+						Usuário: {user.name} ({user.email})
+					</p>
+					<p>Mensagem: {message}</p>
+					<p>frente: {flashcard?.frente}</p>
+					<p>verso: {flashcard?.verso}</p>
+					<p>fundamento: {flashcard?.fundamento}</p>
+					<p>foi incluido no sistema para verificação !</p>
+				</div>
+			),
+		})
+
+		if (response.status === 'success') {
+			const headers = await createToastHeaders({
+				description: 'Erro notificado com sucesso',
+			})
+			return json({ result: submission.reply() }, { headers })
+		}
+	}
+	console.error(
+		'configuração de envio de email não encontrada(NOTIFICAÇÃO DE FLASHCARDS)',
+	)
+	return json(
+		{
+			result: submission.reply({
+				formErrors: ['Erro interno'],
+			}),
+		},
+		{ status: 500 },
+	)
+}
+
+function NotificarErro({ flashcardId }: { flashcardId: string }) {
+	const [show, setShow] = useState(false)
+	const fetcher = useFetcher<typeof notificarErroAction>()
+	const isPending = fetcher.state === 'submitting'
+	const [form, fields] = useForm({
+		id: `notify-flashcard-${flashcardId}`,
+		constraint: getZodConstraint(notifyErrorFlashcardSchema),
+		lastResult: fetcher.data?.result,
+		onValidate({ formData }) {
+			return parseWithZod(formData, { schema: notifyErrorFlashcardSchema })
+		},
+		shouldRevalidate: 'onBlur',
+	})
+
+	useEffect(() => {
+		if (fetcher.data?.result?.status === 'success') {
+			setShow(false)
+		}
+	}, [fetcher.data])
+
+	return (
 		<>
 			<TooltipProvider delayDuration={0}>
 				<Tooltip>
 					<TooltipTrigger>
-						<Link
+						<div
 							onClick={e => {
 								e.stopPropagation()
+								setShow(true)
 							}}
-							to={`${flashcardId}/lists?${searchParams.toString()}`}
 						>
-							<Icon name="game-card" className="h-6 w-6" />
-						</Link>
+							<Icon name="flag" className="h-6 w-6" />
+						</div>
 					</TooltipTrigger>
 					<TooltipContent>
-						<p>Minhas listas</p>
+						<p>Reportar problema/sugestão no flashcard</p>
 					</TooltipContent>
 				</Tooltip>
 			</TooltipProvider>
+
+			<Dialog open={show} onOpenChange={setShow}>
+				<DialogContent onClick={e => e.stopPropagation()}>
+					<fetcher.Form
+						method="post"
+						{...getFormProps(form)}
+						className="space-y-1"
+					>
+						<TextareaField
+							labelProps={{
+								children: 'Descreva o erro encontrado',
+							}}
+							textareaProps={{
+								...getInputProps(fields.message, { type: 'text' }),
+							}}
+							errors={fields.message.errors}
+						/>
+						<ErrorList errors={form.errors} id={form.errorId} />
+						<input
+							type="hidden"
+							name="flashcardId"
+							value={flashcardId}
+							readOnly
+						/>
+						<input
+							type="hidden"
+							name="intent"
+							value={notifyErrorIntent}
+							readOnly
+						/>
+						<div className="flex space-x-2">
+							<StatusButton status={isPending ? 'pending' : 'idle'}>
+								{isPending ? 'Enviando...' : 'Enviar'}
+							</StatusButton>
+							<Button
+								variant="destructive"
+								type="button"
+								onClick={() => setShow(false)}
+							>
+								Cancelar
+							</Button>
+						</div>
+					</fetcher.Form>
+				</DialogContent>
+			</Dialog>
 		</>
 	)
 }
