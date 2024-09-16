@@ -23,7 +23,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 					materia: { select: { name: true, id: true } },
 				},
 			},
-			userList: { select: { list: { select: { id: true, name: true } } } },
+			ListsUsersMyFlashcards: {
+				select: { list: { select: { id: true, name: true } } },
+			},
 		},
 		where: { id: myFlashcardId, userId },
 	})
@@ -62,7 +64,7 @@ export default function FlashcardIdEdit() {
 			lists={lists}
 			flashcard={{
 				...myFlashcard,
-				lists: myFlashcard.userList.map(({ list }) => ({
+				lists: myFlashcard.ListsUsersMyFlashcards.map(({ list }) => ({
 					id: list.id,
 					name: list.name,
 				})),
