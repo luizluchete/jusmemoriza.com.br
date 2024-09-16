@@ -1,6 +1,6 @@
 import { invariantResponse } from '@epic-web/invariant'
 import { type LoaderFunctionArgs, json } from '@remix-run/node'
-import { Link, useLoaderData } from '@remix-run/react'
+import { Form, Link, useLoaderData, useSubmit } from '@remix-run/react'
 import { Icon } from '#app/components/ui/icon'
 import {
 	Select,
@@ -104,6 +104,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function Index() {
 	const { materia, materias, leis } = useLoaderData<typeof loader>()
+	const submit = useSubmit()
 	return (
 		<div className="flex flex-col gap-5">
 			<div className="flex gap-4">
@@ -115,18 +116,20 @@ export default function Index() {
 						<Icon name="tabler-filter" className="h-5 w-5" />
 						<span className="text-lg font-bold">Filtros</span>
 					</div>
-					<Select defaultValue={materia.id} name="materiaId">
-						<SelectTrigger className="w-full">
-							<SelectValue placeholder="Matéria" />
-						</SelectTrigger>
-						<SelectContent>
-							{materias.map(({ id, name }) => (
-								<SelectItem key={id} value={id}>
-									{name}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
+					<Form onChange={e => submit(e.currentTarget)}>
+						<Select defaultValue={materia.id} name="materiaId">
+							<SelectTrigger className="w-full">
+								<SelectValue placeholder="Matéria" />
+							</SelectTrigger>
+							<SelectContent>
+								{materias.map(({ id, name }) => (
+									<SelectItem key={id} value={id}>
+										{name}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</Form>
 				</div>
 				<div
 					id="materia-dados"
