@@ -5,5 +5,7 @@ test('Test root error boundary caught', async ({ page }) => {
 	const res = await page.goto(pageUrl)
 
 	expect(res?.status()).toBe(404)
-	await expect(page.getByText(/We can't find this page/i)).toBeVisible()
+	await expect(
+		page.getByText(/Não conseguimos encontrar esta página:/i),
+	).toBeVisible()
 })
