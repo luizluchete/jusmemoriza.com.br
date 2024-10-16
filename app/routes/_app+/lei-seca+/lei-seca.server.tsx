@@ -51,6 +51,22 @@ export async function buscaMateriasParaFiltro(
 ): Promise<{ id: string; name: string }[]> {
 	const materias = await prisma.materia.findMany({
 		select: { id: true, name: true },
+		where: {
+			status: true,
+			Lei: {
+				some: {
+					titulos: {
+						some: {
+							capitulos: {
+								some: {
+									artigos: { some: { quizzes: { some: { status: true } } } },
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	})
 	return materias
 }

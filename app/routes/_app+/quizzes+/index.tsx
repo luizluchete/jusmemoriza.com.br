@@ -48,15 +48,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		select: {
 			id: true,
 			name: true,
-			titulos: {
-				select: {
-					capitulos: {
-						select: {
-							artigos: { select: { quizzes: { select: { _count: true } } } },
-						},
-					},
-				},
-			},
 			LeiResultUser: {
 				select: { ratingQuiz: true },
 				where: { userId },
@@ -105,11 +96,30 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			},
 		},
 	})
-	return json({ materia, leis, materias })
+
+	const leisWithCount = await Promise.all(
+		leis.map(async lei => {
+			const count = await prisma.quiz.count({
+				where: {
+					status: true,
+					artigo: { capitulo: { titulo: { leiId: lei.id } } },
+				},
+			})
+			return { ...lei, count }
+		}),
+	)
+
+	const count = await prisma.quiz.count({
+		where: {
+			status: true,
+			artigo: { capitulo: { titulo: { lei: { materiaId: materia.id } } } },
+		},
+	})
+	return json({ materia, leis: leisWithCount, materias, count })
 }
 
 export default function Index() {
-	const { materia, materias, leis } = useLoaderData<typeof loader>()
+	const { materia, materias, leis, count } = useLoaderData<typeof loader>()
 	const submit = useSubmit()
 	return (
 		<div className="flex flex-col gap-5">
@@ -155,7 +165,7 @@ export default function Index() {
 					<div className="flex h-full flex-col justify-center">
 						<h1 className="text-4xl font-extrabold">{materia.name}</h1>
 						<span className="text-2xl font-medium text-gray-500">
-							26 Quizzes
+							{count} Questões
 						</span>
 					</div>
 				</div>
@@ -189,7 +199,7 @@ export default function Index() {
 										className="text-wrap text-xl font-medium"
 										dangerouslySetInnerHTML={{ __html: nomeLei }}
 									></span>
-									<span>5 Questões</span>
+									<span>{lei.count} Questões</span>
 								</div>
 								<div className="flex items-end justify-end">
 									<div className="flex">
