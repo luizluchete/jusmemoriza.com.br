@@ -35,6 +35,7 @@ model User {
   createdProduct      Product[]                @relation(name: "createdBy")
   updatedProduct      Product[]                @relation(name: "updatedBy")
   NoteUserQuiz        NoteUserQuiz[]
+  LeiResultUser       LeiResultUser[]
 
   @@map("users")
 }
@@ -229,6 +230,8 @@ model Lei {
   titulos       Titulo[]
   combosLeis    LeisOnCombos[]
   UserFlashcard UserFlashcard[]
+  LeiResultUser LeiResultUser[]
+  UserQuiz      UserQuiz[]
 
   @@map("leis")
 }
@@ -538,6 +541,8 @@ model UserQuiz {
   id        String          @id @default(cuid())
   userId    String
   status    String          @default("started")
+  leiId     String?
+  lei       Lei?            @relation(fields: [leiId], references: [id])
   createdAt DateTime        @default(now())
   quizzes   UserQuizItems[]
 }
@@ -547,9 +552,20 @@ model UserQuizItems {
   quizUserId String
   quizId     String
   answer     String?
+  index      Int?
   createdAt  DateTime @default(now())
   quizUser   UserQuiz @relation(fields: [quizUserId], references: [id])
   quiz       Quiz     @relation(fields: [quizId], references: [id])
+}
+
+model LeiResultUser {
+  ratingQuiz Int    @default(0)
+  userId     String
+  leiId      String
+  lei        Lei    @relation(fields: [leiId], references: [id])
+  user       User   @relation(fields: [userId], references: [id])
+
+  @@id([leiId, userId])
 }
 
 model NoteUserQuiz {

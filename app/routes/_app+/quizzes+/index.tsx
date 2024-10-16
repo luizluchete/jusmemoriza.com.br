@@ -9,11 +9,13 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '#app/components/ui/select'
+import { requireUserId } from '#app/utils/auth.server'
 import { prisma } from '#app/utils/db.server'
 import { hexToRgba } from '#app/utils/misc'
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const url = new URL(request.url)
+	const userId = await requireUserId(request)
 	const materiaId = url.searchParams.get('materiaId') || undefined
 	const materia = await prisma.materia.findFirst({
 		select: { id: true, name: true, color: true },
@@ -54,6 +56,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 						},
 					},
 				},
+			},
+			LeiResultUser: {
+				select: { ratingQuiz: true },
+				where: { userId },
 			},
 		},
 		where: {
@@ -156,39 +162,55 @@ export default function Index() {
 			</div>
 
 			<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-				{leis.map(lei => (
-					<Link key={lei.id} to={`${lei.id}/start`}>
-						<div
-							className="flex w-full cursor-pointer items-center rounded-xl border p-5"
-							style={{
-								borderColor: materia.color || 'black',
-								backgroundColor: materia.color
-									? hexToRgba(materia.color, 0.05)
-									: 'white',
-							}}
-						>
-							<div className="flex-1">
-								<Icon
-									name="circle-wavy-fill"
-									className="h-20 w-20"
-									style={{ color: materia.color || 'black' }}
-								/>
+				{leis.map(lei => {
+					let nomeLei = lei.name
+					const index = lei.name.indexOf('(')
+
+					// adiciona o quebra linha antes do '('
+					if (index > 0) {
+						nomeLei = `${lei.name.slice(0, index)}<br/>${lei.name.slice(index)}`
+					}
+
+					const rating = lei.LeiResultUser[0]?.ratingQuiz || 0
+
+					return (
+						<Link key={lei.id} to={`${lei.id}/start`}>
+							<div
+								className="relative flex h-full w-full cursor-pointer justify-between rounded-xl border p-5"
+								style={{
+									borderColor: materia.color || 'black',
+									backgroundColor: materia.color
+										? hexToRgba(materia.color, 0.05)
+										: 'white',
+								}}
+							>
+								<div className="flex flex-1 flex-col">
+									<span
+										className="text-wrap text-xl font-medium"
+										dangerouslySetInnerHTML={{ __html: nomeLei }}
+									></span>
+									<span>5 Questões</span>
+								</div>
+								<div className="flex items-end justify-end">
+									<div className="flex">
+										<Icon
+											name={rating > 0 ? 'star-color' : 'star-outline'}
+											className="h-7 w-7 text-yellow-500"
+										/>
+										<Icon
+											name={rating > 1 ? 'star-color' : 'star-outline'}
+											className="relative -top-1 h-10 w-10 text-yellow-500"
+										/>
+										<Icon
+											name={rating > 2 ? 'star-color' : 'star-outline'}
+											className="h-7 w-7  text-yellow-500"
+										/>
+									</div>
+								</div>
 							</div>
-							<div className="flex flex-col ">
-								<span className="text-xl font-medium">{lei.name}</span>
-								<span>5 Questões</span>
-							</div>
-							<div className="flex flex-1">
-								<Icon name="star-color" className="h-7 w-7 text-yellow-500" />
-								<Icon
-									name="star-color"
-									className="relative -top-2 h-10 w-10 text-yellow-500"
-								/>
-								<Icon name="star-color" className="h-7 w-7 text-yellow-500" />
-							</div>
-						</div>
-					</Link>
-				))}
+						</Link>
+					)
+				})}
 			</div>
 		</div>
 	)

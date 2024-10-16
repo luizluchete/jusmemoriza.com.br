@@ -4,10 +4,12 @@ import logoBranco from '#app/components/ui/img/logo_jusmemoriza_branco.png'
 
 const navigation = [
 	{ name: 'Início', href: '/home', icon: 'home' },
-	{ name: 'Lei Seca', href: '/lei-seca', icon: 'lei' },
+	{ name: 'Questões Adaptadas', href: '/lei-seca', icon: 'lei' },
+	{ name: 'Meus Cadernos', href: '/cadernos', icon: 'lei' },
+	{ name: 'Minhas anotações', href: '/notes', icon: 'lei' },
 	{ name: 'Flashcards', href: '/flashcards/game', icon: 'game-card' },
 	{ name: 'Quizzes', href: '/quizzes', icon: 'game-card' },
-	{ name: 'Minhas Listas', href: '/lists', icon: 'books' },
+	{ name: 'Listas Flashcards', href: '/lists', icon: 'books' },
 	{ name: 'Meus Flashcards', href: '/mycards', icon: 'books' },
 	{ name: 'Estatísticas', href: '/statistics', icon: 'chart-curve' },
 ]
@@ -16,7 +18,6 @@ export default function LayoutApp() {
 	return (
 		<div>
 			<div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-				{/* Sidebar component, swap this element with another sidebar if you like */}
 				<div className="flex min-h-0 flex-1 flex-col rounded-r-xl bg-primary">
 					<div className="flex flex-1 flex-col overflow-y-auto pb-4 pt-5">
 						<div className="flex flex-shrink-0 items-center justify-center px-4">

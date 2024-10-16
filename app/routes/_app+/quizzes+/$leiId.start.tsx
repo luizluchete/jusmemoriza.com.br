@@ -54,11 +54,14 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	const userQuiz = await prisma.userQuiz.create({
 		data: {
 			userId,
+			leiId,
 			quizzes: {
-				createMany: { data: quizzes.map(quiz => ({ quizId: quiz.id })) },
+				createMany: {
+					data: quizzes.map((quiz, index) => ({ quizId: quiz.id, index })),
+				},
 			},
 		},
 	})
-	const firstQuiz = quizzes.sort(({ id }) => (id === userQuiz.id ? -1 : 1))[0]
-	return redirect(`/quizzes/game/${userQuiz.id}/${firstQuiz.id}`)
+
+	return redirect(`/quizzes/game/${userQuiz.id}/${quizzes[0].id}`)
 }

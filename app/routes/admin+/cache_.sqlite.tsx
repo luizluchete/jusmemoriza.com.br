@@ -15,7 +15,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		request.headers.get('Authorization') === `Bearer ${token}`
 	if (!isAuthorized) {
 		// nah, you can't be here...
-		return redirect('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+		return redirect('/')
 	}
 	const { key, cacheValue } = z
 		.object({ key: z.string(), cacheValue: z.unknown().optional() })

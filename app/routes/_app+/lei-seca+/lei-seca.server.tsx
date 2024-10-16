@@ -45,3 +45,12 @@ export async function notifyErrorQuiz(
 	}
 	return false
 }
+
+export async function buscaMateriasParaFiltro(
+	userId: string,
+): Promise<{ id: string; name: string }[]> {
+	const materias = await prisma.materia.findMany({
+		select: { id: true, name: true },
+	})
+	return materias
+}
