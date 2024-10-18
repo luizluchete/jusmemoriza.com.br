@@ -36,6 +36,7 @@ model User {
   updatedProduct      Product[]                @relation(name: "updatedBy")
   NoteUserQuiz        NoteUserQuiz[]
   LeiResultUser       LeiResultUser[]
+  Caderno             Caderno[]
 
   @@map("users")
 }
@@ -301,6 +302,7 @@ model Quiz {
   notifyErrors  NotifyError[]
   UserQuizItems UserQuizItems[]
   NoteUserQuiz  NoteUserQuiz[]
+  cadernos      CadernoQuiz[]
 
   @@index([artigoId])
   @@index([bancaId, cargoId])
@@ -578,4 +580,28 @@ model NoteUserQuiz {
   user User @relation(fields: [userId], references: [id])
 
   @@id([quizId, userId])
+}
+
+model Caderno {
+  id          String        @id @default(cuid())
+  name        String
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  cadernoQuiz CadernoQuiz[]
+
+  @@map("cadernos")
+}
+
+model CadernoQuiz {
+  cadernoId String
+  quizId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  caderno   Caderno  @relation(fields: [cadernoId], references: [id])
+  quiz      Quiz     @relation(fields: [quizId], references: [id])
+
+  @@id([cadernoId, quizId])
+  @@map("caderno_quizzes")
 }

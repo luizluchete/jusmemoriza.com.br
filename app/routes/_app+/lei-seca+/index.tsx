@@ -19,9 +19,9 @@ import {
 	useSearchParams,
 	useSubmit,
 } from '@remix-run/react'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
-import { ErrorList, TextareaField } from '#app/components/forms'
+import { ErrorList, Field, TextareaField } from '#app/components/forms'
 import { Button } from '#app/components/ui/button'
 import {
 	Command,
@@ -75,6 +75,15 @@ const addNoteSchema = z.object({
 		.optional(),
 })
 
+const addCadernoIntent = 'addCaderno'
+const addCadernoSchema = z.object({
+	name: z
+		.string({ required_error: 'Nome do caderno é obrigatório' })
+		.min(3, { message: 'Nome do caderno deve ter no minimo 3 caracteres' }),
+})
+
+const addQuizCadernoIntent = 'addQuizCaderno'
+
 const PER_PAGE = 20
 export async function loader({ request }: LoaderFunctionArgs) {
 	const userId = await requireUserId(request)
@@ -86,6 +95,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	const searchArtigos = url.searchParams.getAll('artigo')
 	const searchBancas = url.searchParams.getAll('banca')
 	const searchCargos = url.searchParams.getAll('cargo')
+	const searchCadernos = url.searchParams.getAll('caderno')
 	const searchTags = url.searchParams.get('tags')
 	const page = Number(url.searchParams.get('page')) || 1
 	const materias = await buscaMateriasParaFiltro(userId)
@@ -108,6 +118,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		},
 		bancaId: searchBancas.length ? { in: searchBancas } : undefined,
 		cargoId: searchCargos.length ? { in: searchCargos } : undefined,
+		cadernos: searchCadernos.length
+			? { some: { caderno: { userId, id: { in: searchCadernos } } } }
+			: undefined,
 		OR: searchTags
 			? [
 					{ enunciado: { contains: searchTags, mode: 'insensitive' } },
@@ -165,6 +178,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			})
 		: []
 
+	const cadernos = await prisma.caderno.findMany({
+		select: { name: true, id: true },
+		where: { userId },
+	})
+
 	const quizzesMapper = quizzes.map(quiz => ({
 		id: quiz.id,
 		enunciado: quiz.enunciado,
@@ -176,7 +194,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		tags: quiz.tags,
 		note: quiz.NoteUserQuiz.length ? quiz.NoteUserQuiz[0].note : null,
 	}))
-	return json({ quizzes: quizzesMapper, materias, leis, count })
+	return json({ quizzes: quizzesMapper, materias, leis, count, cadernos })
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -196,11 +214,28 @@ export async function action({ request }: ActionFunctionArgs) {
 		return adicionarAnotacaoAction(userId, formData)
 	}
 
-	return json({ message: 'invalid intent' }, { status: 400 })
+	if (_intent === addCadernoIntent) {
+		return addCadernoAction(userId, formData)
+	}
+	if (_intent === addQuizCadernoIntent) {
+		return addQuizNoCadernoAction(userId, formData)
+	}
+
+	return json(
+		{ message: 'invalid intent' },
+		{
+			status: 400,
+			headers: await createToastHeaders({
+				type: 'error',
+				description: 'invalid intent',
+			}),
+		},
+	)
 }
 
 export default function () {
-	const { quizzes, materias, leis, count } = useLoaderData<typeof loader>()
+	const { quizzes, materias, leis, count, cadernos } =
+		useLoaderData<typeof loader>()
 	const [search] = useSearchParams()
 	const fetcher = useFetcher<typeof loaderSearch>()
 	const submit = useSubmit()
@@ -221,6 +256,9 @@ export default function () {
 	)
 
 	const [bancasSelected, setbancasSelected] = useState(search.getAll('banca'))
+	const [cadernosSelected, setCadernosSelected] = useState(
+		search.getAll('caderno'),
+	)
 	const [cargosSelected, setCargosSelected] = useState(search.getAll('cargo'))
 	const [campoLivre, setCampoLivre] = useState(search.get('tags') || '')
 
@@ -267,6 +305,9 @@ export default function () {
 		})
 		cargosSelected.forEach(cargo => {
 			formData.append('cargo', cargo)
+		})
+		cadernosSelected.forEach(caderno => {
+			formData.append('caderno', caderno)
 		})
 		campoLivre && formData.set('tags', campoLivre)
 		submit(formData)
@@ -398,9 +439,18 @@ export default function () {
 						selected={cargosSelected}
 						setSelected={setCargosSelected}
 					/>
+					<MultiFiltro
+						name="caderno"
+						placeholder="Meus Cadernos"
+						options={cadernos.map(cadernos => ({
+							id: cadernos.id,
+							label: cadernos.name,
+						}))}
+						selected={cadernosSelected}
+						setSelected={setCadernosSelected}
+					/>
 
 					<Input
-						className="col-span-2"
 						placeholder="Palavra chave"
 						value={campoLivre}
 						onChange={e => setCampoLivre(e.target.value)}
@@ -488,6 +538,7 @@ type QuizCardProps = {
 }
 function QuizCard({ quiz, index }: QuizCardProps) {
 	const fetcher = useFetcher<typeof answerQuizAction>()
+	const [openCaderno, setOpenCaderno] = useState(false)
 	const isSubmitting = fetcher.state === 'submitting'
 
 	const foiRespondido = !!fetcher.data // se houver dados foi inviado o formulario(respondido)
@@ -510,7 +561,7 @@ function QuizCard({ quiz, index }: QuizCardProps) {
 	}
 
 	return (
-		<li className="flex flex-col gap-3 rounded-xl border border-gray-300 px-5 py-7">
+		<li className="flex flex-col gap-3 rounded-xl border border-gray-300 p-3">
 			<div className="flex flex-col items-center justify-start gap-3 md:flex-row">
 				<div className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-200 font-bold">
 					{index + 1}
@@ -594,11 +645,22 @@ function QuizCard({ quiz, index }: QuizCardProps) {
 						/>
 					</div>
 				) : null}
-				<div className="-mb-5 mt-1 flex  justify-center space-x-4 md:justify-start">
-					<AdicionarCaderno />
+				<div className="mt-1 flex  justify-center space-x-4 md:justify-start">
+					<div
+						className="flex cursor-pointer items-center gap-1 transition-all hover:scale-105"
+						onClick={() => setOpenCaderno(prev => !prev)}
+					>
+						<Icon name="single-book" className="h-5 w-5" />
+						<span className="text-xs">Caderno</span>
+					</div>
 					<NotificarErro id={quiz.id} />
 					<AdicionarAnotacao quizId={quiz.id} note={quiz.note} />
 				</div>
+				{openCaderno ? (
+					<div className="mt-1">
+						<Caderno quizId={quiz.id} />
+					</div>
+				) : null}
 			</div>
 		</li>
 	)
@@ -996,11 +1058,181 @@ function AdicionarAnotacao({
 	)
 }
 
-function AdicionarCaderno() {
+async function addCadernoAction(userId: string, form: FormData) {
+	const result = await parseWithZod(form, {
+		schema: addCadernoSchema.superRefine(async (data, context) => {
+			const exists = await prisma.caderno.findFirst({
+				where: { userId, name: { equals: data.name, mode: 'insensitive' } },
+			})
+			if (exists) {
+				context.addIssue({
+					path: [''],
+					code: z.ZodIssueCode.custom,
+					message: 'Já existe um caderno com este nome!',
+				})
+			}
+		}),
+		async: true,
+	})
+
+	if (result.status !== 'success') {
+		return json({ result: result.reply() }, { status: 400 })
+	}
+
+	await prisma.caderno.create({
+		data: { userId, name: result.value.name },
+	})
+
+	return json(
+		{
+			result: result.reply(),
+		},
+		{
+			headers: await createToastHeaders({
+				type: 'success',
+				description: 'Caderno criado com sucesso',
+			}),
+		},
+	)
+}
+
+async function addQuizNoCadernoAction(userId: string, form: FormData) {
+	const values = Object.fromEntries(form)
+	const { cadernoId, quizId } = values
+
+	const existsCadernos = await prisma.caderno.findFirst({
+		where: { userId, id: String(cadernoId) },
+	})
+
+	if (!existsCadernos) {
+		return json(
+			{ message: 'Caderno não encontrado' },
+			{
+				status: 400,
+				headers: await createToastHeaders({
+					type: 'error',
+					description: 'Caderno não encontrado !',
+				}),
+			},
+		)
+	}
+
+	const exists = await prisma.cadernoQuiz.findFirst({
+		where: {
+			caderno: { userId, id: String(cadernoId) },
+			quizId: String(quizId),
+		},
+	})
+
+	if (!exists) {
+		await prisma.cadernoQuiz.create({
+			data: { cadernoId: String(cadernoId), quizId: String(quizId) },
+		})
+	}
+
+	return json(
+		{ message: 'success' },
+		{
+			headers: await createToastHeaders({
+				type: 'success',
+				description: 'Quiz adicionado ao caderno com sucesso !',
+			}),
+		},
+	)
+}
+
+function Caderno({ quizId }: { quizId: string }) {
+	const fetcher = useFetcher<typeof addCadernoAction>()
+	const fetcherSave = useFetcher<typeof addQuizNoCadernoAction>()
+	const { cadernos } = useLoaderData<typeof loader>()
+	const [form, fields] = useForm({
+		id: `caderno-quiz-${quizId}`,
+		shouldValidate: 'onBlur',
+		lastResult: fetcher.data?.result,
+		onValidate({ formData }) {
+			return parseWithZod(formData, { schema: addCadernoSchema })
+		},
+	})
+	const isSubmittingAdd = fetcher.state === 'submitting'
+	const refFormAdd = useRef<HTMLFormElement>(null)
+
+	useEffect(() => {
+		if (fetcher.data?.result.status === 'success') {
+			refFormAdd.current?.reset()
+		}
+	}, [fetcher.data])
 	return (
-		<div className="flex cursor-pointer items-center gap-1 transition-all hover:scale-105">
-			<Icon name="single-book" className="h-5 w-5" />
-			<span className="text-xs">Caderno</span>
+		<div className="flex w-full items-center justify-between">
+			<fetcher.Form
+				method="post"
+				className="flex flex-col"
+				{...getFormProps(form)}
+				ref={refFormAdd}
+			>
+				<input
+					type="hidden"
+					hidden
+					name="_intent"
+					value={addCadernoIntent}
+					readOnly
+				/>
+
+				<h3 className="text-h6">Cadastrar Caderno</h3>
+				<div className="mt-0.5 flex gap-2">
+					<div>
+						<Field
+							inputProps={getInputProps(fields.name, { type: 'text' })}
+							errors={fields.name.errors}
+						/>
+						<ErrorList errors={form.errors} />
+					</div>
+					<Button type="submit" disabled={isSubmittingAdd}>
+						{isSubmittingAdd ? (
+							<Icon name="update" className="animate-spin" />
+						) : (
+							'Criar'
+						)}
+					</Button>
+				</div>
+			</fetcher.Form>
+			<fetcherSave.Form method="post">
+				<div className="flex gap-2">
+					<input
+						type="hidden"
+						name="_intent"
+						value={addQuizCadernoIntent}
+						hidden
+						readOnly
+					/>
+					<input type="hidden" name="quizId" value={quizId} hidden readOnly />
+					<div className="relative w-[180px]">
+						<select
+							name="cadernoId"
+							className="block w-full appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 pr-8 text-sm leading-tight text-gray-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+						>
+							<option value="" disabled selected>
+								Selecione um caderno
+							</option>
+							{cadernos.map(caderno => (
+								<option value={caderno.id} key={caderno.id}>
+									{caderno.name}
+								</option>
+							))}
+						</select>
+						<div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+							<svg
+								className="h-4 w-4 fill-current"
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 20 20"
+							>
+								<path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+							</svg>
+						</div>
+					</div>
+
+					<Button>Adicionar</Button>
+				</div>
+			</fetcherSave.Form>
 		</div>
 	)
 }
